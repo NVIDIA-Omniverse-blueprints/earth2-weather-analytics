@@ -1,0 +1,25 @@
+{{- if .Values.streamer.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  # TODO: This should be "{{ .Release.Name }}-streamer", but I don't know the
+  # deployment name to use in create_helm_function.sh. Maybe ask the NVCF team?
+  # Alternatively, have a bool value that determines whether the deployment is
+  # being done to NVCF and only use the fixed name in that case.
+  name: "streamer-entrypoint"
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "earth2.selectors" . | nindent 4 }}
+    app.kubernetes.io/component: streamer
+  ports:
+    - port: {{ .Values.service.streamer.credsPort }}
+      targetPort: {{ .Values.service.streamer.credsPort}}
+      protocol: TCP
+      name: "{{ .Release.Name }}-streamer-creds-port"
+    - port: {{ .Values.service.streamer.proxyPort }}
+      targetPort: {{ .Values.service.streamer.proxyPort }}
+      protocol: TCP
+      name: "{{ .Release.Name }}-streamer-proxy-port"
+{{- end }}

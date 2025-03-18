@@ -1,0 +1,44 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "1.4.0"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "Core Extension for Earth-2"
+description = "Stores the internal state of the Earth-2 Command Center and provides an interface to it"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "setup"
+
+# Keywords for the extension
+keywords = ["kit", "setup"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+# Use omni.ui to build simple UI
+[dependencies]
+"omni.kit.async_engine" = {}
+"omni.usd" = {}
+"omni.timeline" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.menu.utils" = {}
+"hpcvis.dynamictexture" = {}
+"omni.kit.pip_archive" = {} # for numpy
+
+# Main python module this extension provides
+[[python.module]]
+name = "omni.earth_2_command_center.app.core"
+
+[settings]

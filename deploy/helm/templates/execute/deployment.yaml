@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-execute
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "earth2.selectors" . | nindent 6 }}
+      app.kubernetes.io/component: execute
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/site-config.yaml") . | sha256sum }}
+        checksum/nvcf-secrets: {{ include (print $.Template.BasePath "/parse-nvcf-secrets.yaml") . | sha256sum }}
+      labels:
+        {{- include "earth2.labels" . | nindent 8 }}
+        app.kubernetes.io/component: execute
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.ngcImagePullSecretName }}
+      # TODO: This is not a good practice. K8s will take care of restarting the
+      # main container if it fails because the redis server isn't up yet.
+      # Furthermore, if the redis server goes down at any point after the
+      # initial start-up, the main service has to handle that, even if handling
+      # it means crashing and letting the usual crash loop logic do its thing.
+      # That also makes it easier to identify problems by seeing a deployment in
+      # CrashLoopBackOff state.
+      initContainers:
+        - name: wait-for-redis
+          image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.busybox.repository }}:{{ .Values.image.busybox.tag }}"
+          imagePullPolicy: {{ .Values.image.busybox.pullPolicy }}
+          {{- include "earth2.busybox.command" . | nindent 10 }}
+          env:
+          - name: K8S_REDIS_HOST
+            value: {{ tpl .Values.redis.host . | quote }}
+          - name: K8S_REDIS_PORT
+            value: {{ .Values.redis.port | quote }}
+      containers:
+        - name: execute
+          image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.execute.repository }}:{{ .Values.image.execute.tag }}"
+          imagePullPolicy: {{ .Values.image.execute.pullPolicy }}
+          command:
+            - bash
+            - -c
+            - |
+              source /scripts/parse-nvcf-secrets.sh || true && \
+              exec /opt/conda/bin/conda run -n dfm --live-stream "./run.sh"
+          args: []
+          ports:
+            - name: http-execute
+              containerPort: {{ .Values.service.execute.port }}
+          resources:
+            {{- toYaml .Values.execute.resources | nindent 12 }}
+          volumeMounts:
+            - name: parse-secrets-script
+              mountPath: /scripts
+            - name: site-config
+              mountPath: {{ .Values.site.config.path }}
+          {{- if .Values.site.secrets.enabled }}
+            - name: site-secrets
+              mountPath: {{ .Values.site.secrets.path }}
+              readOnly: true
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          env:
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: {{ .Values.otel.collector }}
+          - name: OTEL_METRICS_EXPORTER
+            value: none
+          - name: OTEL_TRACES_EXPORTER
+            value: {{ .Values.otel.traces_exporter }}
+          - name: OTEL_EXPORTER_OTLP_INSECURE
+            value: "true"
+          - name: K8S_EXECUTE_SITE_CONFIG
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Release.Name }}-execute
+                key: site-config-path
+          {{- if .Values.site.secrets.enabled }}
+          - name: K8S_EXECUTE_SITE_SECRETS
+            value: {{ .Values.site.secrets.path }}/{{ .Values.site.secrets.file }}
+          {{- end }}
+          - name: SERVICE_LOGGING_ENABLE_JSON
+            value: {{ .Values.logging.json.enabled | quote }}
+          - name: K8S_EXECUTE_REDIS_HOST
+            value: {{ tpl .Values.redis.host . | quote }}
+          - name: K8S_EXECUTE_REDIS_PORT
+            value: {{ .Values.redis.port | quote }}
+          - name: K8S_EXECUTE_REDIS_DB
+            value: {{ .Values.redis.db | quote }}
+          - name: PYTHONMANHOLE
+            value: ""
+          # - name: K8S_EXECUTE_REDIS_PASSWORD
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.redis.secretName }}
+          #       key: {{ .Values.redis.secretKey }}
+          # - name: DFM_AUTH_METHOD
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.auth.secret }}
+          #       key:  {{ .Values.auth.method.key }}
+          # - name: DFM_AUTH_API_KEY
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.auth.secret }}
+          #       key:  {{ .Values.auth.api_key.key }}
+          - name: DFM_AUTH_METHOD
+            value: "none"
+          - name: DFM_AUTH_API_KEY
+            value: ""
+          - name: DFM_ESRI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: esri-arcgis-secret
+                key: api-key
+                optional: true
+
+      volumes:
+        - name: parse-secrets-script
+          configMap:
+            name: {{ .Release.Name }}-parse-nvcf-secrets
+            defaultMode: 0755
+        - name: site-config
+          configMap:
+            name: {{ .Release.Name }}-execute
+      {{- if .Values.site.secrets.enabled }}
+        - name: site-secrets
+          secret:
+            secretName: {{ .Values.site.secrets.name | quote }}
+      {{- end }}
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

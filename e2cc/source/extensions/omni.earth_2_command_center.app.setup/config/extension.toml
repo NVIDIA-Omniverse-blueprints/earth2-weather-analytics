@@ -1,0 +1,79 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "1.0.7"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "Setup Extension for Earth-2"
+description = "Sets up the Earth-2 Command Center"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "setup"
+
+# Keywords for the extension
+keywords = ["kit", "setup"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+# Use omni.ui to build simple UI
+[dependencies]
+"omni.earth_2_command_center.app.core" = {}
+"omni.earth_2_command_center.app.geo_utils" = {}
+"omni.kit.quicklayout" = {}
+"omni.kit.window.title" = {}
+"omni.kit.window.filepicker" = {}
+"omni.kit.menu.utils" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.window.splash" = {}
+"omni.kit.actions.core" = {}
+"omni.kit.hotkeys.core" = {}
+"omni.timeline" = {}
+"omni.resourcemonitor" = {}
+"omni.kit.pip_archive" = {} # for numpy
+
+# Main python module this extension provides, it will be publicly available as "import omni.hello.world".
+[[python.module]]
+name = "omni.earth_2_command_center.app.setup"
+
+[settings]
+# URL of setup stage
+exts."omni.earth_2_command_center.app.setup".stage = "${omni.earth_2_command_center.app.setup}/data/dynamic_texture_tests/test_002/test_002.usda"
+
+# This is either an integer defining the cache size in bytes, or a string ending in a percentage sign
+exts."omni.earth_2_command_center.app.setup".dynamic_texture_cache_size = "50.0%"
+
+#exts."omni.earth_2_command_center.app.setup".worldTextureBasePath = "${omni.earth_2_command_center.app.setup}/data/textures/world_8k.jpg"
+
+# World texture location
+# Windows uses 8k base
+"filter:platform"."windows-x86_64".exts."omni.earth_2_command_center.app.setup".worldTextureBasePath = [
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_A1_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_B1_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_C1_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_D1_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_A2_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_B2_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_C2_8k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_D2_8k.jpg"]
+# Linux uses 16k base
+"filter:platform"."linux-x86_64".exts."omni.earth_2_command_center.app.setup".worldTextureBasePath = [
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_A1_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_B1_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_C1_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_D1_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_A2_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_B2_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_C2_4k.jpg",
+  "${omni.earth_2_command_center.app.setup}/data/textures/world_D2_4k.jpg"]

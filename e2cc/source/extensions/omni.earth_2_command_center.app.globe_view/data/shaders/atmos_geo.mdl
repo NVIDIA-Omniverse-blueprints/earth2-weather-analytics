@@ -1,0 +1,83 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.7;
+
+import ::tex::*;
+import ::anno::*;
+import ::base::*;
+import ::df::*;
+import ::state::*;
+import ::tex::*;
+import ::math::*;
+
+export material AtmosphereGeo(
+    uniform float intensity = 1600.0f,
+    uniform color scattering_coefficient = float3(0.17522658610271902f, 0.4078549848942598, 1.0f),
+    uniform float scattering_transition_gamma = 2.5f,
+    uniform float anisotropy = 0.2f,
+   	uniform float exponent1 = 1.5f,
+    uniform float min_scatter = 0.1f,
+    uniform float3 cam_pos = float3(0.0f),
+    uniform float3 sun_pos = float3(0.0f)
+)
+ =
+    let {
+      float3 N_earth = ::math::normalize(::state::transform_point(::state::coordinate_internal, ::state::coordinate_world, ::state::position()));
+      float3 Ps = ::state::transform_point(::state::coordinate_internal, ::state::coordinate_world, ::state::position());
+      //float3 Ns = ::state::transform_normal(::state::coordinate_internal, ::state::coordinate_world, ::state::normal());
+      float3 Ns = N_earth;
+      float3 eye = ::math::normalize(cam_pos-Ps);
+      uniform float3 Ln = ::math::normalize(sun_pos-float3(0.0f, 0.0f, 0.0f));//Ps);
+
+      float facing_ratio = ::math::dot(eye, Ns);
+      float light_factor = ::math::pow(::math::max(0.0f, (::math::dot(Ns, Ln)+1.0f)*0.5f), scattering_transition_gamma);
+
+      float cos_angle = ::math::dot(-Ln, eye);
+      //float phase_function = 1+cos_angle*cos_angle;
+      uniform float anisotropy2 = anisotropy*anisotropy;
+      float phase_function = (1.0f-anisotropy2)/::math::pow(1.0f + anisotropy2 - 2.0f*anisotropy*cos_angle, 3.0f/2.0f);
+
+      float falloff = min_scatter+(1.0f-min_scatter)*::math::pow(::math::max(0.0f, 1.0f-facing_ratio), exponent1);
+
+      float atmosphere_feather = ::math::saturate((facing_ratio-0.2f)*10.0f);
+      color density = phase_function*scattering_coefficient*falloff*light_factor*atmosphere_feather;
+
+      material_surface front_surface(
+          ::df::specular_bsdf(color(1), ::df::scatter_transmit),
+          material_emission(emission: df::diffuse_edf(), intensity: density*intensity, mode: intensity_radiant_exitance));
+      material_surface back_surface(
+          ::df::specular_bsdf(color(0), ::df::scatter_transmit));
+
+} in material
+(
+	surface: front_surface,
+  backface: back_surface,
+	ior: color(1.f),
+  thin_walled: true
+);

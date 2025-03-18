@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+#
+# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
+# property and proprietary rights in and to this material, related
+# documentation and any modifications thereto. Any use, reproduction,
+# disclosure or distribution of this material and related documentation
+# without an express license agreement from NVIDIA CORPORATION or
+# its affiliates is strictly prohibited.
+
+# Default values for dfm-process.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+streamer:
+  enabled: false
+
+nim:
+  enabled: false
+
+dfm:
+  cacheSize: 8Gi
+
+execute:
+  resources:
+    limits:
+      cpu: 1
+      memory: 4G
+    requests:
+      cpu: 1
+      memory: 4G
+
+redis:
+  master:
+    # Run with tighter limits to put more pressure on the
+    # deployment. We use larger limits for other deployments.
+    resources:
+      requests:
+        cpu: 125m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  replica:
+    resources:
+      requests:
+        cpu: 125m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+# Additional volumes on the output Deployment definition.
+volumes:
+  - name: cache-volume
+    hostPath:
+      path: /cache
+      type: Directory

@@ -1,0 +1,9 @@
+# Match any file or path named .helmignore
+.helmignore
+
+# Match any file or path named .git
+.git
+
+*.md
+
+*.old

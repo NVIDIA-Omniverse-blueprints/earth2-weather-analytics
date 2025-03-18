@@ -1,0 +1,42 @@
+FROM python:3.12-slim
+
+# Install git and poetry
+RUN apt-get update && \
+    apt-get install -y git && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip install poetry
+
+# Install system dependencies required for building Python packages
+RUN apt-get update && apt-get install -y \
+    libkrb5-dev \
+    krb5-config \
+    build-essential \
+    libeccodes0 \
+    libeccodes-dev \
+    openssh-client \
+    libpq-dev \
+    gcc \
+    gdb \
+    gfortran \
+    curl \
+    wget \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Tell eccodes to use system so library
+ENV ECCODES_PYTHON_USE_FINDLIBS=1
+ENV LD_LIBRARY_PATH=/lib/x86_64-linux-gnu/
+
+# Install dependencies in a separate location
+WORKDIR /deps
+COPY src/pyproject.toml src/poetry.lock ./
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --no-root --with dev --with core
+
+# Set workspace for mounted code
+WORKDIR /workspace/src
+
+# Add entrypoint script to install package before running tests
+COPY ci/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

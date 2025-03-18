@@ -1,0 +1,7 @@
+### Test outputs
+src/tests/files/testoutputs/
+
+### Custom
+cache/
+
+.vscode

@@ -1,0 +1,15 @@
+[package]
+title = "Earth-2 Command Center Resources"
+description = "This Extension contains resources (images, icons) used by the Earth-2 Command Center and splash screen."
+version = "0.1.2"
+
+authors = ["HPC Vis"]
+
+readme  = "docs/README.md"
+changelog = "docs/CHANGELOG.md"
+category = "setup"
+icon = "data/icon.png"
+preview_image = "data/preview.png"
+
+[[test]]
+waiver = "Earth-2 Command Center is tested as an app using omni.earth-2-command-center.tests"

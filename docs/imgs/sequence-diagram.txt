@@ -1,0 +1,109 @@
+participantspacing equal
+
+actor "actor" as actor
+#supported participant types: participant, actor, boundary, control, entity, database
+
+autoactivation on
+
+participantgroup :1 Omniverse
+participant "Kit Streaming App" as Kit
+participant "API Extension" as KitApi
+participant "DFM Extension" as KitDfm
+end
+
+database "Persistent Storage (Cache)" as storage
+
+participantgroup :1 Data Federation
+participant "DFM Process" as process
+database "Redis DB" as cache
+participant "DFM Scheduler" as scheduler
+participant "DFM Executer" as execute
+end
+
+participant "Third Party Data" as data
+participant "Earth-2 NIM" as nim
+
+actor->Kit: Request Stream
+Kit->actor: WebRTC
+autoactivation off
+actor->Kit:Request
+autoactivation on
+Kit->KitApi:WebRTC Request Message
+KitApi->KitDfm: Request Texture(s)
+KitDfm->process: Request Texture Pipeline
+deactivate KitDfm
+process->cache: Add Request
+autoactivation off
+# Scheduler
+process->cache: Pub/Sub Request
+opt if delayed execution
+loop until execute time
+scheduler->cache: Fetch Pub/Sub Request (s)
+activate scheduler
+scheduler<--cache: Request
+end
+scheduler->cache: Pub/Sub Execute Request
+end
+deactivate scheduler
+
+loop until execution request
+cache<-execute: Fetch Pub/Sub Request(s)
+activate execute
+end
+cache-->execute: Request
+
+#Execute
+autoactivation off
+alt texture in cache
+execute->cache: Request Complete
+else texture not cached
+autoactivation on
+execute->data: Fetch Data
+data-->execute: Data
+autoactivation off
+execute->execute: Process Data
+opt NIM request
+execute->nim: Inference Request
+activate nim
+loop stream
+nim-->execute: Inference Result
+execute->execute: Process Result
+deactivate nim
+end
+end
+execute->storage: Cache Texture
+execute->cache: Request Complete
+deactivate execute
+end
+
+# Response polling from client
+loop until request complete
+KitDfm->process: Request Status
+process->cache: Fetch request
+process<--cache: Request State
+deactivate cache
+
+alt pending
+KitDfm<--process: Pending Status
+else complete
+KitDfm<--process: Texture Location
+end
+end
+deactivate process
+
+
+# Rendering
+KitDfm->storage: Read Texture
+KitDfm<--storage: Texture
+KitDfm-->Kit: Texture
+KitDfm-->KitApi: Pipeline Complete
+
+KitApi-->Kit: Success Message
+Kit-->actor: Success
+deactivate KitApi
+
+actor->Kit: Stop Stream
+destroy Kit
+
+deactivate Kit
+deactivate actor

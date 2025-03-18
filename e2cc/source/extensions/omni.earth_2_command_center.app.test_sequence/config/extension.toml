@@ -1,0 +1,64 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "0.2.5"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "Test Sequence"
+description = "An example extension to add an image sequence feature to the E2CC"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "setup"
+
+# Keywords for the extension
+keywords = ["kit", "setup"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+[dependencies]
+"omni.ui" = {}
+"omni.earth_2_command_center.app.core" = {}
+"omni.kit.window.filepicker" = {}
+"omni.kit.pip_archive" = {} # for numpy
+
+# Main python module this extension provides
+[[python.module]]
+name = "omni.earth_2_command_center.app.test_sequence"
+
+[settings]
+# ========================================
+# Lat-Long Blue Marble Data
+# ========================================
+exts."omni.earth_2_command_center.app.test_sequence".enable_blue_marble = false
+exts."omni.earth_2_command_center.app.test_sequence".blue_marble_base = "omniverse://hpcviz.ov.nvidia.com/Demos/E2Base/"
+
+# ========================================
+# CorrDiff Sample Data
+# ========================================
+# download from:
+#    - Dataset: https://drive.google.com/file/d/1W525JlmnkHENqYDNDqeVjqx4LuCdFuoL/view?usp=drive_link
+exts."omni.earth_2_command_center.app.test_sequence".enable_corr_diff_sample = false
+exts."omni.earth_2_command_center.app.test_sequence".corr_diff_sample_base = "omniverse://hpcviz.ov.nvidia.com/Demos/E2Base/textures/"
+#exts."omni.earth_2_command_center.app.test_sequence".corr_diff_sample_base = "/tmp/corrdiff_sample_data/"
+
+# ========================================
+# ICON Blue Marble Data
+# ========================================
+# download from:
+#    - Dataset Clouds: https://drive.google.com/file/d/1y4Di-RvOgj7wfK7VKSWB6SArtsj5hzUn/view?usp=drive_link
+#    - Dataset Wind:   https://drive.google.com/file/d/1afA5Z2mrfmafDX8VzSucTh6U10pR4CqR/view?usp=drive_link
+exts."omni.earth_2_command_center.app.test_sequence".enable_icon_blue_marble = false
+#exts."omni.earth_2_command_center.app.test_sequence".icon_blue_marble_base = "/home/phadorn/persistent_tmp/datasets/ICON/R2B11"
+exts."omni.earth_2_command_center.app.test_sequence".icon_blue_marble_base = "/home/nvidia/Downloads/ICON/R2B11"

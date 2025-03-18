@@ -1,0 +1,299 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+/*
+ * TODO:
+ *  - need to verify orientation of data sources (ICON, FCN, etc.)
+ *  - fix orientation of diamond texture coordinates
+ *  - make layers modular so we can add/remove/reorder them in a shader graph
+ *  - is recomputing the various coordinates expensive? could cache and reuse
+ */
+mdl 1.7;
+
+import ::anno::*;
+import ::base::*;
+import ::df::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+
+export enum projection_preset
+{
+  projection_preset_invalid = 0
+  [[
+    anno::display_name("Invalid")
+  ]],
+  projection_preset_latlong
+  [[
+    anno::display_name("LatLong")
+  ]],
+  projection_preset_diamond
+  [[
+    anno::display_name("Diamond")
+  ]]
+};
+
+export enum channel_select_preset
+{
+  channel_select_R = 0
+  [[
+    anno::display_name("R")
+  ]],
+  channel_select_G
+  [[
+    anno::display_name("G")
+  ]],
+  channel_select_B
+  [[
+    anno::display_name("B")
+  ]],
+  channel_select_RGB
+  [[
+    anno::display_name("RGB")
+  ]]
+};
+
+color lookup_latlong_texture(
+    uniform texture_2d texture)
+{
+  float3 sphere_pos = math::normalize(
+      state::transform_point(state::coordinate_internal, state::coordinate_object, state::position()));
+  float2 latlong_uv = float2(::math::atan2(-sphere_pos.z, sphere_pos.x)/(2.0f*::math::PI), 1.0f-::math::acos(sphere_pos.y)/::math::PI);
+  return tex::lookup_color(texture, latlong_uv);
+}
+
+color lookup_diamond_texture(
+    uniform texture_2d diamond_0,
+    uniform texture_2d diamond_1,
+    uniform texture_2d diamond_2,
+    uniform texture_2d diamond_3,
+    uniform texture_2d diamond_4,
+    uniform texture_2d diamond_5,
+    uniform texture_2d diamond_6,
+    uniform texture_2d diamond_7,
+    uniform texture_2d diamond_8,
+    uniform texture_2d diamond_9)
+{
+  uniform int diamond_idx = scene::data_lookup_uniform_float("diamond_idx", 0);
+  uniform int diamond_subidx = scene::data_lookup_uniform_float("diamond_subidx", 0);
+
+  float2 uvs = float2(
+      math::fmod(state::texture_coordinate(0).y, 10),
+      state::texture_coordinate(0).x);
+
+  color lookup = tex::lookup_color(
+      (diamond_idx == 0) ? diamond_0 :
+      (diamond_idx == 1) ? diamond_1 :
+      (diamond_idx == 2) ? diamond_2 :
+      (diamond_idx == 3) ? diamond_3 :
+      (diamond_idx == 4) ? diamond_4 :
+      (diamond_idx == 5) ? diamond_5 :
+      (diamond_idx == 6) ? diamond_6 :
+      (diamond_idx == 7) ? diamond_7 :
+      (diamond_idx == 8) ? diamond_8 :
+      (diamond_idx == 9) ? diamond_9 :
+      diamond_0, uvs, tex::wrap_clamp, tex::wrap_clamp);
+  return lookup;
+}
+
+color lookup_texture(
+    uniform projection_preset projection,
+    uniform channel_select_preset channels,
+    uniform texture_2d latlon,
+    uniform texture_2d diamond_0,
+    uniform texture_2d diamond_1,
+    uniform texture_2d diamond_2,
+    uniform texture_2d diamond_3,
+    uniform texture_2d diamond_4,
+    uniform texture_2d diamond_5,
+    uniform texture_2d diamond_6,
+    uniform texture_2d diamond_7,
+    uniform texture_2d diamond_8,
+    uniform texture_2d diamond_9)
+{
+  color result = color(0);
+  switch (projection)
+  {
+    case projection_preset_latlon:
+      result = lookup_latlong_texture(latlon);
+      break;
+    case projection_preset_diamond:
+      result = lookup_diamond_texture(
+          diamond_0,
+          diamond_1,
+          diamond_2,
+          diamond_3,
+          diamond_4,
+          diamond_5,
+          diamond_6,
+          diamond_7,
+          diamond_8,
+          diamond_9);
+      break;
+    default:
+  }
+
+  switch(channels)
+  {
+    case channel_select_R:
+      result = color(float3(result)[0]);
+      break;
+    case channel_select_G:
+      result = color(float3(result)[1]);
+      break;
+    case channel_select_B:
+      result = color(float3(result)[2]);
+      break;
+    default:
+      break;
+  }
+  return result;
+}
+
+export material SimpleLayering(
+    uniform float specular_weight = 0.0f
+    [[
+      anno::display_name("Weight"),
+      anno::in_group("Specular")
+    ]],
+    uniform float specular_rougness = 0.1f
+    [[
+      anno::display_name("Roughness"),
+      anno::in_group("Specular")
+    ]],
+
+    uniform texture_2d base_texture = texture_2d()
+    [[
+      anno::display_name("Texture"),
+      anno::in_group("Base")
+    ]],
+
+    uniform projection_preset projection = projection_preset_latlon
+    [[
+      anno::display_name("Projection"),
+      anno::in_group("Layer 1")
+    ]],
+    uniform channel_select_preset channels = channel_select_R
+    [[
+      anno::display_name("Channels"),
+      anno::in_group("Layer 1")
+    ]],
+    uniform texture_2d latlong_texture = texture_2d()
+    [[
+      anno::display_name("Lat/Long Texture"),
+      anno::in_group("Layer 1")
+    ]],
+    uniform texture_2d diamond_texture_0 = texture_2d()
+    [[
+      anno::display_name("Diamond 0"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_1 = texture_2d()
+    [[
+      anno::display_name("Diamond 1"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_2 = texture_2d()
+    [[
+      anno::display_name("Diamond 2"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_3 = texture_2d()
+    [[
+      anno::display_name("Diamond 3"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_4 = texture_2d()
+    [[
+      anno::display_name("Diamond 4"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_5 = texture_2d()
+    [[
+      anno::display_name("Diamond 5"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_6 = texture_2d()
+    [[
+      anno::display_name("Diamond 6"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_7 = texture_2d()
+    [[
+      anno::display_name("Diamond 7"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_8 = texture_2d()
+    [[
+      anno::display_name("Diamond 8"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]],
+    uniform texture_2d diamond_texture_9 = texture_2d()
+    [[
+      anno::display_name("Diamond 9"),
+      anno::in_group("Layer 1", "Diamond Texture")
+    ]]
+)
+ =
+    let {
+      color base_color = lookup_latlong_texture(base_texture);
+
+      color lookup = lookup_texture(
+          projection,
+          channels,
+          latlong_texture,
+          diamond_texture_0,
+          diamond_texture_1,
+          diamond_texture_2,
+          diamond_texture_3,
+          diamond_texture_4,
+          diamond_texture_5,
+          diamond_texture_6,
+          diamond_texture_7,
+          diamond_texture_8,
+          diamond_texture_9);
+
+      color diffuse_color = math::lerp(base_color, lookup, float3(lookup)[0]);
+      bsdf diffuse_bsdf = df::diffuse_reflection_bsdf(diffuse_color);
+      bsdf specular_bsdf = df::microfacet_beckmann_smith_bsdf(specular_rougness);
+
+      bsdf surface_bsdf = df::fresnel_layer(
+          weight: specular_weight,
+          ior: 1.33f,
+          layer: specular_bsdf,
+          base: diffuse_bsdf
+          );
+      material_surface surface(
+          surface_bsdf);
+
+} in material
+(
+	surface: surface,
+  ior: color(1)
+);

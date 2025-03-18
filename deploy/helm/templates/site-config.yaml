@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-execute
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+data:
+  site-config-path: {{ printf "%s/%s" .Values.site.config.path .Values.site.config.file  }}
+  {{ .Values.site.config.file | quote }}: |
+      site: mini1
+      providers:
+        ecmwf:
+          provider_class: provider.BasicProvider
+          description: Provider of historical ERA5 data from the Google Cloud analysis-ready corpus covering the years 1959-2022
+          cache_fsspec_conf:
+            protocol: file
+            base_url: "/cache/xarray_dataloaders"
+          interface:
+            dfm.api.data_loader.LoadEra5ModelData:
+              adapter_class: adapter.data_loader.LoadEcmwfEra5Data
+              engine: zarr
+              engine_kwargs:
+                consolidated: true
+              chunks: auto
+              url: gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2
+              first_date: "1959-01-01"
+              last_date: "2021-12-31"
+              frequency: 1
+        noaa:
+          provider_class: provider.BasicProvider
+          description: The operational GFS consists of a data assimilation system (GDAS) for the atmosphere and forecast models for the atmosphere and ocean waves.
+          cache_fsspec_conf:
+            protocol: file
+            base_url: "/cache/xarray_dataloaders"
+          interface:
+            dfm.api.data_loader.LoadEra5ModelData:
+              adapter_class: adapter.data_loader.LoadGfsEra5Data
+              chunks: auto
+              url: https://nomads.ncep.noaa.gov/dods/gfs_0p25/gfs{}/gfs_0p25_00z
+              offset_first: 9
+              offset_last: 1
+              frequency: 3
+        gfs:
+          provider_class: provider.BasicProvider
+          description: Provider of historical ERA5 data from the GFS AWS Bucket
+          cache_fsspec_conf:
+            protocol: file
+            base_url: "/cache/xarray_dataloaders"
+          interface:
+            dfm.api.data_loader.LoadEra5ModelData:
+              adapter_class: adapter.data_loader.LoadGfsEra5S3Data
+              chunks: auto
+              bucket_name: noaa-gfs-bdp-pds
+              first_date: "2021-02-18"
+              last_date: "2024-03-13"
+              frequency: 6
+        hrrr:
+          provider_class: provider.HrrrProvider
+          description: Provider of HRRR data
+          cache_fsspec_conf:
+            protocol: file
+            base_url: "/cache/xarray_dataloaders"
+          interface:
+            dfm.api.data_loader.LoadHrrrModelData:
+              adapter_class: adapter.data_loader.LoadHrrrData
+        esri:
+          provider_class: provider.EsriProvider
+          description: Provider of elevation and wind data from ESRI
+          cache_fsspec_conf:
+            protocol: file
+            base_url: "/cache/esri"
+          interface:
+            dfm.api.esri.LoadElevationData:
+              adapter_class: adapter.esri.LoadElevationData
+            dfm.api.esri.LoadUSWindForecastData:
+              adapter_class: adapter.esri.LoadUSWindForecastData
+            dfm.api.esri.LoadMetarWindData:
+              adapter_class: adapter.esri.LoadMetarWindData
+        fourcastnet:
+            provider_class: provider.BasicProvider
+            description: Provider for the FourCastNet NIM
+            cache_fsspec_conf:
+              protocol: file
+              base_url: "/cache/fcn_cache"
+            interface:
+              dfm.api.nwp.InvokeNimNwpDnn:
+                adapter_class: adapter.nwp.InvokeNimFourCastNet
+                url: {{ printf "http://%s-nim:%d/v1/infer" .Release.Name (.Values.service.nim.port | int) | quote }}
+        local_earth2_textures:
+          provider_class: provider.BasicProvider
+          description: Writes 2D texture images as local files
+          cache_fsspec_conf:
+            protocol: file
+            base_url: "/cache/textures"
+          interface:
+            dfm.api.xarray.RenderUint8ToImages:
+              adapter_class: adapter.xarray.RenderUint8ToImages
+              format: jpeg
+              quality: 90
+        dfm:
+            provider_class: provider.BasicProvider
+            description: The default provider for most operations
+            interface:
+              dfm.api.dfm.Constant: dfm.service.execute.adapter.dfm.Constant
+              dfm.api.dfm.Execute: dfm.service.execute.adapter.dfm.Execute
+              dfm.api.dfm.SignalClient: dfm.service.execute.adapter.dfm.SignalClient
+              dfm.api.dfm.SignalAllDone: dfm.service.execute.adapter.dfm.SignalAllDone
+              dfm.api.dfm.PushResponse: dfm.service.execute.adapter.dfm.PushResponse
+              dfm.api.xarray.AveragePointwise: dfm.service.execute.adapter.xarray.AveragePointwise
+              dfm.api.xarray.ConvertToUint8: dfm.service.execute.adapter.xarray.ConvertToUint8
+              dfm.api.xarray.VariableNorm: dfm.service.execute.adapter.xarray.VariableNorm
+        greetme:
+            provider_class: provider.BasicProvider
+            description: The default provider
+            interface:
+              dfm.api.dfm.GreetMe:
+                  adapter_class: adapter.dfm.GreetMe
+                  greeting: "Hello"

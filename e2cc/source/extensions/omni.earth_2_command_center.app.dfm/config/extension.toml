@@ -1,0 +1,49 @@
+[package]
+# Semantic Versionning is used: https://semver.org/
+version = "0.1.1"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "DFM Connector"
+description = "Integrates Earth-2 Command Center with Data Federation Mesh"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "example"
+
+# Keywords for the extension
+keywords = ["kit", "example"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+[dependencies]
+"omni.earth_2_command_center.app.core" = {}
+"omni.kit.async_engine" = {}
+
+# We bundle not only "toml" package, but many other. No need to mention all of them, just importing one will add whole
+# folder (pip_prebundle) to sys.path.
+# [[python.module]]
+# path = "pip_archive"
+
+# Main python module this extension provides
+[[python.module]]
+name = "omni.earth_2_command_center.app.dfm"
+
+[settings]
+# Data Federation Engine configuration
+exts."omni.earth_2_command_center.app.dfm".dfm.dev1.url = "https://dfm-dev1-site1.sc-paas.nvidia.com"
+exts."omni.earth_2_command_center.app.dfm".dfm.local.url = "http://localhost:8080"
+exts."omni.earth_2_command_center.app.dfm".dfm.deployment = "local"
+exts."omni.earth_2_command_center.app.dfm".dfm.nucleus_writer = "textures_on_earth2"
+exts."omni.earth_2_command_center.app.dfm".world_alpha_mask = "${omni.earth_2_command_center.app.dfm}/data/world_alpha_mask_85_deg.jpg"

@@ -1,0 +1,57 @@
+{{- if .Values.streamer.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-streamer"
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "earth2.selectors" . | nindent 6 }}
+      app.kubernetes.io/component: streamer
+  template:
+    metadata:
+      labels:
+        {{- include "earth2.labels" . | nindent 8 }}
+        app.kubernetes.io/component: streamer
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.ngcImagePullSecretName }}
+      containers:
+      - name: streamer
+        image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.streamer.repository }}:{{ .Values.image.streamer.tag }}"
+        imagePullPolicy: {{ .Values.image.streamer.pullPolicy }}
+        ports:
+          - name: creds-port
+            containerPort: {{ .Values.service.streamer.credsPort }} # TODO: Why do the ports need to be configurable?
+            protocol: TCP
+          - name: proxy-port
+            containerPort: {{ .Values.service.streamer.proxyPort }}
+            protocol: TCP
+        volumeMounts:
+        {{- with .Values.volumeMounts }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+          - mountPath: /dev/shm
+            name: dshm
+        env:
+          - name: K8S_E2CC_DFM_PROCESS_HOST
+            value: "http://{{ .Release.Name }}-process"
+          - name: K8S_E2CC_DFM_PROCESS_PORT
+            value: "{{ .Values.service.process.port }}"
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+      volumes:
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}

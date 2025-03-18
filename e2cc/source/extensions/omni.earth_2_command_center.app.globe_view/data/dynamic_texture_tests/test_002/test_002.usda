@@ -1,0 +1,256 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary cameraSettings = {
+            dictionary Front = {
+                double3 position = (50000, 0, 0)
+                double radius = 500
+            }
+            dictionary Perspective = {
+                double3 position = (25019.709999441762, 50589.555629912145, -3220.0585652621135)
+                double3 target = (618.2748639772326, -465.922306682638, 145.03807383329604)
+            }
+            dictionary Right = {
+                double3 position = (0, -50000, 0)
+                double radius = 500
+            }
+            dictionary Top = {
+                double3 position = (0, 0, 50000)
+                double radius = 500
+            }
+            string boundCamera = "/OmniverseKit_Persp"
+        }
+        dictionary navmeshSettings = {
+            double agentHeight = 180
+            double agentMaxClimb = 84
+            double agentMaxSlope = 73
+            double agentRadius = 10
+            bool autoRasterParamTweak = 1
+            bool autoRegionParamTweak = 1
+            bool excludeRigidBodies = 1
+            double rasterCellHeight = 1
+            double rasterCellSize = 4.5
+            int regionMergedSize = 400
+            int regionMinSize = 64
+            int ver = 1
+        }
+        dictionary omni_layer = {
+            string authoring_layer = "./test_002.usda"
+            dictionary muteness = {
+            }
+        }
+        int refinementOverrideImplVersion = 0
+    }
+    defaultPrim = "World"
+    endTimeCode = 238
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 24
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def Scope "Looks"
+    {
+        def Material "AtmospherePrecomputed" (
+        )
+        {
+            token outputs:mdl:displacement.connect = </World/Looks/AtmospherePrecomputed/Shader.outputs:out>
+            token outputs:mdl:surface.connect = </World/Looks/AtmospherePrecomputed/Shader.outputs:out>
+            token outputs:mdl:volume.connect = </World/Looks/AtmospherePrecomputed/Shader.outputs:out>
+
+            def Shader "Shader"
+            {
+                reorder properties = ["inputs:intensity", "inputs:scattering_coefficient", "inputs:scattering_transition_gamma", "inputs:anisotropy", "inputs:exponent1", "inputs:min_scatter", "inputs:cam_pos", "inputs:sun_pos"]
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:mdl:sourceAsset = @../../shaders/atmos_precomputed.mdl@
+                uniform token info:mdl:sourceAsset:subIdentifier = "AtmospherePrecomputed"
+                float inputs:atmosphere_thickness = 12.0 (
+                    customData = {
+                        float default = 8
+                    }
+                    hidden = false
+                )
+                float3 inputs:cam_pos = (19338.658, -24927.238, 5630.7744) (
+                    customData = {
+                        float3 default = (0, 0, 0)
+                    }
+                    hidden = false
+                )
+                float inputs:intensity = 9000000000 (
+                    customData = {
+                        float default = 1000
+                    }
+                    hidden = false
+                )
+                float3 inputs:sun_dir = (0, -405.5789, 172.15802) (
+                    customData = {
+                        float3 default = (0, 1, 0)
+                    }
+                    hidden = false
+                )
+                asset inputs:transmission_lookup = @../../textures/sky_transmission.exr@ (
+                    colorSpace = "raw"
+                    customData = {
+                        asset default = @@
+                    }
+                    hidden = false
+                    renderType = "texture_2d"
+                )
+                token outputs:out
+            }
+        }
+    }
+
+    def Xform "earth_xform"
+    {
+        token visibility = "inherited"
+        double3 xformOp:rotateXYZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def "atmos" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+            prepend references = @../../stages/diamond_globe.usd@
+        )
+        {
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (5050, 5050, 5050)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+            rel material:binding = </World/Looks/AtmospherePrecomputed> (
+                bindMaterialAs = "weakerThanDescendants"
+            )
+
+            bool primvars:doNotCastShadows = 1
+            bool primvars:invisibleToSecondaryRays = 0
+        }
+
+        def "diamond_globe" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+            prepend references = @../../stages/diamond_globe_2.usd@
+            #prepend references = @/tmp/test_stage.usd@
+        )
+        {
+            token visibility = "inherited"
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (4950, 4950, 4950)
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+    }
+
+    def Xform "sun"
+    {
+        token visibility = "inherited"
+        double3 xformOp:rotateXYZ = (-116.49641223768623, 179.32613167451433, 84.36653204066374)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        def DistantLight "sun_spec" (
+            prepend apiSchemas = ["ShapingAPI"]
+        )
+        {
+            float angle = 1
+            float colorTemperature = 6000
+            float diffuse = 0
+            bool enableColorTemperature = 0
+            float exposure = -1.0
+            float intensity = 3000
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            float specular = 1
+            token visibility = "inherited"
+            bool visibleInPrimaryRay = 1
+            double3 xformOp:rotateXYZ = (0.0, 0.0, 0.0)
+            double3 xformOp:scale = (1.0, 1.0, 1.0)
+            double3 xformOp:translate = (0.0, 0.0, 0.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def DistantLight "sun_diffuse" (
+            prepend apiSchemas = ["ShapingAPI"]
+        )
+        {
+            float angle = 1
+            float colorTemperature = 6000
+            float diffuse = 1
+            bool enableColorTemperature = 0
+            float exposure = -1.0
+            float intensity = 3000
+            float shaping:cone:angle = 180
+            float shaping:cone:softness
+            float shaping:focus
+            color3f shaping:focusTint
+            asset shaping:ies:file
+            bool shaping:ies:normalize = 0
+            float specular = 0
+            token visibility = "inherited"
+            bool visibleInPrimaryRay = 0
+            double3 xformOp:rotateXYZ = (0.0, 0.0, 0.0)
+            double3 xformOp:scale = (1.0, 1.0, 1.0)
+            double3 xformOp:translate = (0.0, 0.0, 0.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+    }
+
+    def DistantLight "headlight" (
+        prepend apiSchemas = ["ShapingAPI"]
+    )
+    {
+        float inputs:angle = 5
+        float inputs:colorTemperature = 8000
+        bool inputs:enableColorTemperature = 1
+        float inputs:exposure = -3
+        float inputs:intensity = 3000
+        float inputs:shaping:cone:angle = 180
+        float inputs:shaping:cone:softness
+        float inputs:shaping:focus
+        color3f inputs:shaping:focusTint
+        asset inputs:shaping:ies:file
+        float inputs:specular = 0
+        token visibility = "inherited"
+        bool visibleInPrimaryRay = 0
+        double3 xformOp:rotateXYZ = (45, 0, 90)
+        double3 xformOp:scale = (1, 1, 1)
+        matrix4d xformOp:transform = ( (-0.9022470120015391, 0.431219583662772, 0, 0), (0.025598384524451696, 0.05355987256672199, 0.998236476372395, 0), (0.4304591177382967, 0.9006558780779383, -0.059362759703581736, 0), (25019.709999441762, 50589.555629912145, -3220.0585652621135, 1) )
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:transform"]
+    }
+
+    def DomeLight "starfield" (
+        prepend apiSchemas = ["ShapingAPI"]
+    )
+    {
+        float inputs:diffuse = 0
+        float inputs:exposure = 5
+        float inputs:intensity = 25
+        float inputs:shaping:cone:angle = 180
+        float inputs:shaping:cone:softness
+        float inputs:shaping:focus
+        color3f inputs:shaping:focusTint
+        asset inputs:shaping:ies:file
+        float inputs:diffuse = 0
+        float inputs:specular = 0
+        asset inputs:texture:file = @./starfield.exr@
+        token inputs:texture:format = "latlong"
+        double3 xformOp:rotateXYZ = (0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        #token visibility = "invisible"
+        bool primvars:doNotCastShadows = 1
+    }
+}
+
+over "OmniverseKit_Persp"
+{
+    float2 clippingRange = (1, 100000)
+}

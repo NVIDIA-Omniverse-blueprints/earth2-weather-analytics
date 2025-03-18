@@ -1,0 +1,233 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "Conventions": "CF-1.7",
+            "GRIB_centre": "kwbc",
+            "GRIB_centreDescription": "US National Weather Service - NCEP ",
+            "GRIB_edition": 2,
+            "GRIB_subCentre": 0,
+            "coordinates": "gribfile_projection",
+            "description": "Global Forecast System",
+            "institution": "US National Weather Service - NCEP ",
+            "local_grib": "C:\\Users\\cangerer\\data\\gfs\\20220918\\subset_52b24824__gfs.t00z.pgrb2.0p25.f006",
+            "model": "gfs",
+            "product": "pgrb2.0p25",
+            "remote_grib": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20220918/00/atmos/gfs.t00z.pgrb2.0p25.f006",
+            "search": ":TMP:2 m above"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "gribfile_projection/.zarray": {
+            "chunks": [],
+            "compressor": null,
+            "dtype": "<f8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [],
+            "zarr_format": 2
+        },
+        "gribfile_projection/.zattrs": {
+            "_ARRAY_DIMENSIONS": [],
+            "crs_wkt": "GEOGCRS[\"unknown\",DATUM[\"unknown\",ELLIPSOID[\"unknown\",6371229,0,LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]],PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8901]],CS[ellipsoidal,2],AXIS[\"longitude\",east,ORDER[1],ANGLEUNIT[\"degree\",0.0174532925199433,ID[\"EPSG\",9122]]],AXIS[\"latitude\",north,ORDER[2],ANGLEUNIT[\"degree\",0.0174532925199433,ID[\"EPSG\",9122]]]]",
+            "geographic_crs_name": "unknown",
+            "grid_mapping_name": "latitude_longitude",
+            "horizontal_datum_name": "unknown",
+            "inverse_flattening": 0.0,
+            "long_name": "GFS model grid projection",
+            "longitude_of_prime_meridian": 0.0,
+            "prime_meridian_name": "Greenwich",
+            "reference_ellipsoid_name": "unknown",
+            "semi_major_axis": 6371229.0,
+            "semi_minor_axis": 6371229.0
+        },
+        "heightAboveGround/.zarray": {
+            "chunks": [],
+            "compressor": null,
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [],
+            "zarr_format": 2
+        },
+        "heightAboveGround/.zattrs": {
+            "_ARRAY_DIMENSIONS": [],
+            "long_name": "height above the surface",
+            "positive": "up",
+            "standard_name": "height",
+            "units": "m"
+        },
+        "latitude/.zarray": {
+            "chunks": [
+                721
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                721
+            ],
+            "zarr_format": 2
+        },
+        "latitude/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "latitude"
+            ],
+            "long_name": "latitude",
+            "standard_name": "latitude",
+            "stored_direction": "decreasing",
+            "units": "degrees_north"
+        },
+        "longitude/.zarray": {
+            "chunks": [
+                1440
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                1440
+            ],
+            "zarr_format": 2
+        },
+        "longitude/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "longitude"
+            ],
+            "long_name": "longitude",
+            "standard_name": "longitude",
+            "units": "degrees_east"
+        },
+        "step/.zarray": {
+            "chunks": [],
+            "compressor": null,
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [],
+            "zarr_format": 2
+        },
+        "step/.zattrs": {
+            "_ARRAY_DIMENSIONS": [],
+            "long_name": "time since forecast_reference_time",
+            "standard_name": "forecast_period",
+            "units": "hours"
+        },
+        "t2m/.zarray": {
+            "chunks": [
+                181,
+                720
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f4",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                721,
+                1440
+            ],
+            "zarr_format": 2
+        },
+        "t2m/.zattrs": {
+            "GRIB_NV": 0,
+            "GRIB_Nx": 1440,
+            "GRIB_Ny": 721,
+            "GRIB_cfName": "air_temperature",
+            "GRIB_cfVarName": "t2m",
+            "GRIB_dataType": "fc",
+            "GRIB_gridDefinitionDescription": "Latitude/longitude. Also called equidistant cylindrical, or Plate Carree",
+            "GRIB_gridType": "regular_ll",
+            "GRIB_iDirectionIncrementInDegrees": 0.25,
+            "GRIB_iScansNegatively": 0,
+            "GRIB_jDirectionIncrementInDegrees": 0.25,
+            "GRIB_jPointsAreConsecutive": 0,
+            "GRIB_jScansPositively": 0,
+            "GRIB_latitudeOfFirstGridPointInDegrees": 90.0,
+            "GRIB_latitudeOfLastGridPointInDegrees": -90.0,
+            "GRIB_longitudeOfFirstGridPointInDegrees": 0.0,
+            "GRIB_longitudeOfLastGridPointInDegrees": 359.75,
+            "GRIB_missingValue": 3.4028234663852886e+38,
+            "GRIB_name": "2 metre temperature",
+            "GRIB_numberOfPoints": 1038240,
+            "GRIB_paramId": 167,
+            "GRIB_parameterName": "Temperature ",
+            "GRIB_parameterUnits": "K",
+            "GRIB_shortName": "2t",
+            "GRIB_stepRange": "6",
+            "GRIB_stepType": "instant",
+            "GRIB_stepUnits": 1,
+            "GRIB_typeOfLevel": "heightAboveGround",
+            "GRIB_units": "K",
+            "_ARRAY_DIMENSIONS": [
+                "latitude",
+                "longitude"
+            ],
+            "coordinates": "time step heightAboveGround latitude longitude valid_time",
+            "grid_mapping": "gribfile_projection",
+            "long_name": "2 metre temperature",
+            "standard_name": "air_temperature",
+            "units": "K"
+        },
+        "time/.zarray": {
+            "chunks": [],
+            "compressor": null,
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [],
+            "zarr_format": 2
+        },
+        "time/.zattrs": {
+            "_ARRAY_DIMENSIONS": [],
+            "calendar": "proleptic_gregorian",
+            "long_name": "initial time of forecast",
+            "standard_name": "forecast_reference_time",
+            "units": "seconds since 1970-01-01"
+        },
+        "valid_time/.zarray": {
+            "chunks": [],
+            "compressor": null,
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [],
+            "zarr_format": 2
+        },
+        "valid_time/.zattrs": {
+            "_ARRAY_DIMENSIONS": [],
+            "calendar": "proleptic_gregorian",
+            "long_name": "time",
+            "standard_name": "time",
+            "units": "seconds since 1970-01-01"
+        }
+    },
+    "zarr_consolidated_format": 1
+}

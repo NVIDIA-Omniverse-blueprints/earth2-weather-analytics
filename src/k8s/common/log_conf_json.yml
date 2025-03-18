@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+#
+# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
+# property and proprietary rights in and to this material, related
+# documentation and any modifications thereto. Any use, reproduction,
+# disclosure or distribution of this material and related documentation
+# without an express license agreement from NVIDIA CORPORATION or
+# its affiliates is strictly prohibited.
+
+version: 1
+disable_existing_loggers: False
+formatters:
+  default:
+    # "()": uvicorn.logging.DefaultFormatter
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    use_colors: false
+  access:
+    # "()": uvicorn.logging.AccessFormatter
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    use_colors: false
+  json:
+    # class: "json_log_formatter.JSONFormatter"
+    class: "dfm.service.common.logging.DfmJSONFormatter"
+    use_colors: false
+handlers:
+  default:
+    formatter: json
+    class: logging.StreamHandler
+    stream: ext://sys.stderr
+  access:
+    formatter: json
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
+loggers:
+  uvicorn.error:
+    level: INFO
+    handlers:
+      - default
+    propagate: no
+  uvicorn.access:
+    level: INFO
+    handlers:
+      - access
+    propagate: no
+root:
+  level: DEBUG
+  handlers:
+    - access
+  propagate: no

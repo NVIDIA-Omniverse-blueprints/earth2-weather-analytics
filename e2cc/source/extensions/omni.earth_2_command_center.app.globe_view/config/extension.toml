@@ -1,0 +1,72 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "1.4.0"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "Earth-2 Command Center Globe View Viewport"
+description = "A Globe View Viewport implementation for the Earth-2 Command Center"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "viewport"
+
+# Keywords for the extension
+keywords = ["kit", "viewport"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+# Use omni.ui to build simple UI
+[dependencies]
+"omni.ui" = {}
+"omni.usd" = {}
+"omni.timeline" = {}
+"omni.kit.actions.core" = {}
+"omni.kit.hotkeys.core" = {}
+"omni.kit.menu.utils" = {}
+"omni.earth_2_command_center.app.core" = {}
+"omni.earth_2_command_center.app.setup" = {}
+"omni.earth_2_command_center.app.shading" = {}
+"omni.earth_2_command_center.app.geo_utils" = {}
+"omni.kit.async_engine" = {}
+"omni.kit.window.cursor" = {}
+# TODO: attempt to fix issue: https://nvidia.slack.com/archives/CGNV10TFX/p1700180972096399?thread_ts=1700176802.441889&cid=CGNV10TFX
+#"omni.rtx.shadercache.vulkan" = {}
+"omni.kit.viewport.window" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.manipulator.camera" = {}
+"omni.activity.profiler" = {}
+"omni.activity.pump" = {}
+"omni.kit.pip_archive" = {} # for numpy
+
+[settings]
+# URL of setup stage
+exts."omni.earth_2_command_center.app.globe_view".stage = "${omni.earth_2_command_center.app.globe_view}/data/dynamic_texture_tests/test_002/test_002.usda"
+
+exts."omni.earth_2_command_center.app.globe_view".zoom_min = 4951
+exts."omni.earth_2_command_center.app.globe_view".zoom_max = 50000
+
+[[python.module]]
+name = "omni.earth_2_command_center.app.globe_view"
+
+[[test]]
+dependencies = [
+    "omni.hydra.pxr",
+]
+args = [
+    "--/renderer/enabled=pxr",
+    "--/app/asyncRendering=false",
+    "--/exts/omni.kit.viewport.window/startup/disableWindowOnLoad=true",
+    ##"--no-window",
+]

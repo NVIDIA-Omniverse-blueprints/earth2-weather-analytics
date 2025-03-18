@@ -1,0 +1,13 @@
+
+version = "1.0.0"
+[oss]
+
+[oss.excluded]
+
+[[oss.excluded.directories]]
+paths = ['source/']
+comment = 'source code packaged for license compliance'
+
+[[oss.excluded.directories]]
+paths = ['opt/conda/pkgs/']
+comment = 'conda setup packages, not executed since a seperate conda environment is used'

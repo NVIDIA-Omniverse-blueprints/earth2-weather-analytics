@@ -1,0 +1,201 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.7;
+
+import ::tex::*;
+import ::anno::*;
+import ::base::*;
+import ::df::*;
+import ::state::*;
+import ::tex::*;
+import ::math::*;
+
+float sqr(float v) {return v*v;}
+
+//// this is when the ray starts at (0, ro)!
+//float intersect_inner(float ri, float ro,
+//                       float cos_theta) {
+//  float ri2 = sqr(ri);
+//  float ro2 = sqr(ro);
+//  float cos_theta2 = sqr(cos_theta);
+//
+//  float discriminant = ro2 * (cos_theta2 - 1.0f) + ri2;
+//  if (discriminant < 0.0f)
+//    return -1.0f;
+//
+//  return (ro2 - ri2) / (ro * cos_theta + math::sqrt(discriminant));
+//}
+//
+//// this is when the ray starts at (0, ro)!
+//float intersect_outer(float ri, float ro,
+//                       float cos_theta) {
+//  return 2.0f * ro * cos_theta;
+//}
+
+float intersect(float r, float cos_theta, float h) {
+  float b = 2.0f * h * cos_theta; // sgn(b) = +sgn(cos_theta)
+  float c = sqr(h) - sqr(r);
+
+  float disc = sqr(b) - 4.0f * c;
+  if (disc < 0.0f)
+    return -1.0f;
+
+  // gives stable root first which avoids catastrophic cancellation
+  float x1 = -0.5f * (b + math::sign(b) * math::sqrt(disc));
+  float x2 = c / x1;
+
+  // x1*x2 = c
+  return (c < 0) ? math::max(x1, x2) : math::min(x1, x2);
+}
+
+//const float3 mie_scattering = float3(250e-9);
+const float3 rayleigh_scattering = float3(5.8e-9, 13.5e-9, 33.1e-9);
+//const float3 mie_extinction = mie_scattering/0.9;
+//const float3 rayleigh_extinction = rayleigh_scattering;
+
+const float Ri = 4950.0f;
+const float Ro = 5050.0f;
+
+float3 get_transmittance(float3 from, float3 dir, uniform texture_2d transmittance_map)
+{
+  float height = math::length(from);
+  float3 N = math::normalize(from);
+  float cos_theta = math::dot(N, dir);
+
+  float ti = intersect(Ri, cos_theta, height);
+
+  if (ti > 0.0f) {
+    return float3(0);
+  }
+  else {
+    //return tex::lookup_float3(transmittance_map, float2(math::acos(cos_theta)/math::PI, (height-Ri)/60.0f), tex::wrap_clamp, tex::wrap_clamp);
+    return tex::lookup_float3(transmittance_map, float2(0.5f*(1.0f-cos_theta), (height-Ri)/(Ro-Ri)), tex::wrap_clamp, tex::wrap_clamp);
+  }
+}
+
+//float get_phase_function(float cos_theta) {
+//  return 1.0f / (4.0f * math::PI) * (1.0f + sqr(cos_theta));
+//}
+
+float get_phase_function_HG(float cos_theta, float g = 0.2f) {
+  float denom = 1.0f + sqr(g) + 2.0f*g*cos_theta;
+  return (1.0f / (4.0f * math::PI)) * (1.0f - sqr(g))/(denom * math::sqrt(denom));
+}
+
+float3 accumulate_inscattering(
+    float3 start, float3 end,
+    uniform float3 sun_dir,
+    uniform texture_2d transmittance_map,
+    uniform float atmosphere_thickness = 8.0,
+    uniform int num_samples = 32) {
+
+  float3 dir = end-start;
+  float3 delta_dir = dir/num_samples;
+  float cos_theta = math::dot(sun_dir, math::normalize(-dir));
+
+  float3 result = float3();
+  for (uniform int i=0; i<num_samples; ++i) {
+    float3 pos = start + (i+0.5f)*delta_dir;
+    float height = math::length(pos)-Ri;
+    float phase_function = get_phase_function_HG(cos_theta);
+    float density = math::exp(-height/atmosphere_thickness);
+    //float3 ambient_term = 0.01f*math::max(0.0f, 1.0f-math::max(0.0f, math::dot(math::normalize(pos), -sun_dir)));
+    result += density*phase_function*get_transmittance(pos, sun_dir, transmittance_map);
+  }
+  result *= rayleigh_scattering*math::length(dir)/num_samples;
+
+  return result;
+}
+
+export material AtmospherePrecomputed(
+    uniform float intensity = 1000.0f,
+    uniform float atmosphere_thickness = 8.0f,
+    uniform float3 cam_pos = float3(),
+    uniform float3 sun_dir = float3(0,1,0),
+    uniform texture_2d transmission_lookup = texture_2d()
+    )
+  =
+  let {
+    float3 Ps = state::transform_point(state::coordinate_internal, state::coordinate_world, state::position());
+    float3 Ns = math::normalize(Ps);
+    float3 eye = math::normalize(Ps-cam_pos);
+
+    float height = math::length(Ps);
+    float cos_theta = math::dot(eye, Ns);
+    float ti = intersect(Ri, cos_theta, math::max(Ri+0.01f, height))-1e-2f;
+    float to = intersect(Ro, cos_theta, math::min(Ro-0.01f, height))-1e-2f;
+
+    float3 inscatter = accumulate_inscattering(
+        Ps, (ti > 0) ? Ps+eye*ti : Ps+eye*to,
+        math::normalize(sun_dir),
+        transmission_lookup,
+        atmosphere_thickness,
+        8
+        );
+
+    //// did we hit the ground?
+    //if (ti > 0.0) {
+    //  float p0x = 0.0;
+    //  float p0y = height;
+    //  //float p1x = ti * std::sin(theta);
+    //  //float p1y = height + ti * std::cos(theta);
+
+    //  //result = atmosphere.optical_thickness(p0x, p0y, p1x, p1y);
+    //}
+    //// did we hit the outer atmosphere?
+    //else if (to > 0.0) {
+    //  float p0x = 0.0;
+    //  float p0y = height;
+    //  //float p1x = to * std::sin(theta);
+    //  //float p1y = height + to * std::cos(theta);
+
+    //  //result = atmosphere.optical_thickness(p0x, p0y, p1x, p1y);
+    //}
+
+    // TODO: until https://jirasw.nvidia.com/browse/OMPE-18549 is resolved
+    //float3 transmittance = color(1.0f);
+    float3 transmittance = tex::lookup_float3(transmission_lookup, float2(0.5f*(1.0f-cos_theta), 1.0f), tex::wrap_clamp, tex::wrap_clamp);
+    float3 emission = inscatter;
+
+    material_surface front_surface(
+        //df::specular_bsdf(color(1.0f), df::scatter_transmit),
+        df::specular_bsdf(color(transmittance), df::scatter_transmit),
+        material_emission(emission: df::diffuse_edf(), intensity: color(emission)*intensity, mode: intensity_radiant_exitance));
+
+    material_surface back_surface(
+        // block out ray to avoid light being visible with large size to wrap globe
+        df::specular_bsdf(color(1), df::scatter_transmit));
+
+  } in material
+(
+ surface: front_surface,
+ backface: back_surface,
+ ior: color(1.f),
+ thin_walled: true
+ );

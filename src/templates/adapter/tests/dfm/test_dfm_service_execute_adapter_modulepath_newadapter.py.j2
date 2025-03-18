@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+#
+# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
+# property and proprietary rights in and to this material, related
+# documentation and any modifications thereto. Any use, reproduction,
+# disclosure or distribution of this material and related documentation
+# without an express license agreement from NVIDIA CORPORATION or
+# its affiliates is strictly prohibited.
+
+import pytest
+from dfm.api import FunctionCall
+from dfm.api.{{ adapter.package }} import {{ adapter.name }} as {{ adapter.name }}Params
+from dfm.config.adapter.{{ adapter.package }} import {{ adapter.name }} as {{ adapter.name }}Config
+from dfm.service.execute.adapter.{{ adapter.package }} import {{ adapter.name }}
+
+from tests.common import MockDfmRequest
+
+pytest_plugins = ('pytest_asyncio',)
+
+@pytest.mark.asyncio
+async def test_adapter_executes():
+    FunctionCall.set_allow_outside_block()
+    config = {{ adapter.name }}Config(item='Configuration item')
+    params = {{ adapter.name }}Params(parameter='Function paramter')
+    adapter = {{ adapter.name }}(
+        MockDfmRequest(this_site='here'),
+        None, #provider # type: ignore
+        config,
+        params
+    )
+    FunctionCall.unset_allow_outside_block()
+    result = []
+    async for r in adapter.get_or_create_stream():
+        result.append(r)
+
+    assert len(result) == 1
+    assert result[0] == 'Configuration item Function paramter'

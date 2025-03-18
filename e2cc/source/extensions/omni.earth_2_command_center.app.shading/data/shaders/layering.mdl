@@ -1,0 +1,187 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+// system imports
+import ::anno::*;
+import ::math::*;
+import ::tex::*;
+
+// local imports
+import common::*;
+import colormaps::*;
+
+export typedef float4 ColorLayer;
+
+export ColorLayer merge_color_layers(ColorLayer[<N>] layers,  bool[N] active)
+{
+  ColorLayer result;
+
+  for (int i=0; i<N; ++i)
+  {
+    if (!active[i])
+      continue;
+    result.w += (1.0f-result.w) * layers[i].w;
+    result.x = math::lerp(result.x, layers[i].x, layers[i].w);
+    result.y = math::lerp(result.y, layers[i].y, layers[i].w);
+    result.z = math::lerp(result.z, layers[i].z, layers[i].w);
+  }
+
+  return result;
+}
+
+export ColorLayer create_layer(
+      color value = color(0.0f)
+      [[
+      anno::display_name("Color")
+      ]],
+      float alpha = 0.0f
+      [[
+      anno::display_name("Alpha"),
+      anno::hard_range(0.0f, 1.0f)
+      ]]
+      )
+{
+  return ColorLayer(
+      float3(value).x,
+      float3(value).y,
+      float3(value).z,
+      alpha);
+}
+
+export ColorLayer create_layer(
+      float4 value = float4(0.0f)
+      )
+{
+  return ColorLayer(value);
+}
+
+export ColorLayer merge(
+    ColorLayer A,
+    ColorLayer B
+    )
+{
+  return merge_color_layers(ColorLayer[](A, B), bool[](true, true));
+}
+
+export ColorLayer merge_2(
+     bool L0_active,
+    ColorLayer L0,
+     bool L1_active,
+    ColorLayer L1
+    )
+{
+  return merge_color_layers(ColorLayer[](
+        L0, L1),
+       bool[](
+        L0_active, L1_active));
+}
+
+export ColorLayer merge_10(
+    uniform bool L0_active,
+    ColorLayer L0,
+    uniform bool L1_active,
+    ColorLayer L1,
+    uniform bool L2_active,
+    ColorLayer L2,
+    uniform bool L3_active,
+    ColorLayer L3,
+    uniform bool L4_active,
+    ColorLayer L4,
+    uniform bool L5_active,
+    ColorLayer L5,
+    uniform bool L6_active,
+    ColorLayer L6,
+    uniform bool L7_active,
+    ColorLayer L7,
+    uniform bool L8_active,
+    ColorLayer L8,
+    uniform bool L9_active,
+    ColorLayer L9
+    )
+{
+  return merge_color_layers(ColorLayer[](
+        L0,
+        L1,
+        L2,
+        L3,
+        L4,
+        L5,
+        L6,
+        L7,
+        L8,
+        L9),
+       bool[](
+        L0_active,
+        L1_active,
+        L2_active,
+        L3_active,
+        L4_active,
+        L5_active,
+        L6_active,
+        L7_active,
+        L8_active,
+        L9_active)
+      );
+}
+
+export ColorLayer lut_color_transfer(
+    ColorLayer layer,
+    uniform texture_2d lut,
+    uniform int channel = 0
+    )
+{
+    // when the lut isn't valid, we bypass color transfer
+    if (!tex::texture_isvalid(lut))
+        return layer;
+
+    ColorLayer result;
+    color c = colormaps::lut_lookup(layer[channel], lut);
+    result.x = float3(c)[0];
+    result.y = float3(c)[1];
+    result.z = float3(c)[2];
+    result.w = layer.w;//0.5*layer.w;
+
+    return result;
+}
+
+export ColorLayer remap_layer(
+    ColorLayer layer,
+    uniform float input_min = 0.0f,
+    uniform float input_max = 1.0f,
+    uniform float output_min = 0.0f,
+    uniform float output_max = 1.0f,
+    uniform float output_gamma = 1.0f
+    )
+{
+  ColorLayer normalized_layer = math::clamp((layer-input_min)/(input_max-input_min), float4(0.0f), float4(1.0f));
+  ColorLayer normalized_layer_gamma = math::pow(normalized_layer, 1.0f/output_gamma);
+  ColorLayer denormalized_layer = normalized_layer_gamma*(output_max-output_min)+output_min;
+  return denormalized_layer;
+}

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dfm-cache # TODO: Can this use {{ .Release.Name }}-cache?
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteMany]
+  resources: { requests: { storage: {{ .Values.dfm.cacheSize }} } }

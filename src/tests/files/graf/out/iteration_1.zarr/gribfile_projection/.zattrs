@@ -1,0 +1,14 @@
+{
+    "_ARRAY_DIMENSIONS": [],
+    "crs_wkt": "GEOGCRS[\"unknown\",DATUM[\"unknown\",ELLIPSOID[\"unknown\",6371229,0,LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]],PRIMEM[\"Greenwich\",0,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8901]],CS[ellipsoidal,2],AXIS[\"longitude\",east,ORDER[1],ANGLEUNIT[\"degree\",0.0174532925199433,ID[\"EPSG\",9122]]],AXIS[\"latitude\",north,ORDER[2],ANGLEUNIT[\"degree\",0.0174532925199433,ID[\"EPSG\",9122]]]]",
+    "geographic_crs_name": "unknown",
+    "grid_mapping_name": "latitude_longitude",
+    "horizontal_datum_name": "unknown",
+    "inverse_flattening": 0.0,
+    "long_name": "GFS model grid projection",
+    "longitude_of_prime_meridian": 0.0,
+    "prime_meridian_name": "Greenwich",
+    "reference_ellipsoid_name": "unknown",
+    "semi_major_axis": 6371229.0,
+    "semi_minor_axis": 6371229.0
+}

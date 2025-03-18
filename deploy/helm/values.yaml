@@ -1,0 +1,207 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+#
+# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
+# property and proprietary rights in and to this material, related
+# documentation and any modifications thereto. Any use, reproduction,
+# disclosure or distribution of this material and related documentation
+# without an express license agreement from NVIDIA CORPORATION or
+# its affiliates is strictly prohibited.
+
+# Default values for dfm-process.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+streamer:
+  enabled: true
+
+nim:
+  enabled: true
+  overrideNgcAPIKey: ""
+  shmSize: 4Gi
+
+dfm:
+  cacheSize: 16Gi
+
+image:
+  process:
+    repository: earth2-weather-analytics-process
+    tag: 0.1.0
+    pullPolicy: Never
+  scheduler:
+    repository: earth2-weather-analytics-scheduler
+    tag: 0.1.0
+    pullPolicy: Never
+  execute:
+    repository: earth2-weather-analytics-execute
+    tag: 0.1.0
+    pullPolicy: Never
+  streamer:
+    repository: earth2-weather-analytics-streamer
+    tag: 0.1.0
+    pullPolicy: Never
+  nim:
+    repository: nvcr.io/nim/nvidia/fourcastnet
+    tag: 1.0.0
+    pullPolicy: IfNotPresent
+  busybox:
+    repository: busybox
+    tag: 1.36.1
+    pullPolicy: IfNotPresent
+
+# NVCF requirement
+ngcImagePullSecretName: docker-secret
+ngcImageRegistryPath: ""
+
+service:
+  process:
+    type: ClusterIP
+    port: 8080
+
+  execute:
+    type: ClusterIP
+    port: 8085
+
+  scheduler:
+    type: ClusterIP
+    port: 8082
+
+  streamer:
+    credsPort: 8011
+    proxyPort: 49100
+
+  nim:
+    type: ClusterIP
+    port: 8086
+
+otel:
+  collector: "http://jaeger-collector:4317"
+  traces_exporter: none
+
+resources: {}
+
+execute:
+  resources:
+    limits:
+      cpu: 2
+      memory: 4G
+    requests:
+      cpu: 1
+      memory: 2G
+
+logging:
+  json:
+    enabled: false
+
+auth:
+  secret: dfm-auth-secret
+  method:
+    key: method
+  api_key:
+    key: api_key
+
+redis:
+  host: "{{ .Release.Name }}-redis-master"
+  port: 6379
+  db: 0
+
+  bitnami: true
+  # we expect a secret created that contains redis password
+  secretName: redis
+  secretKey: password
+
+  usePassword: false
+  usePasswordFiles: false
+
+  auth:
+    enabled: false
+
+  networkPolicy:
+    enabled: false
+
+  image:
+    repository: redis/redis-stack-server
+    tag: 7.2.0-v11
+
+  master:
+    enabled: true
+    persistence:
+      enabled: false
+      sizeLimit: 128Mi
+    enableServiceLinks: false
+    containerSecurityContext:
+      enabled: false
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1G
+      limits:
+        cpu: 500m
+        memory: 2G
+    extraEnvVars:
+      - name: REDIS_MAXMEMORY
+        valueFrom:
+          resourceFieldRef:
+            containerName: redis
+            resource: requests.memory
+            divisor: 1Mi  # Convert bytes to MB
+    extraFlags:
+      - "--loadmodule /opt/redis-stack/lib/rejson.so"
+      - "--appendonly no"
+      - "--maxmemory-policy allkeys-lru"
+      - "--maxmemory ${REDIS_MAXMEMORY}mb"
+
+  replica:
+    enabled: true
+    replicaCount: 1
+    persistence:
+      enabled: false
+      sizeLimit: 128Mi
+    enableServiceLinks: false
+    containerSecurityContext:
+      enabled: false
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1G
+      limits:
+        cpu: 500m
+        memory: 2G
+    extraEnvVars:
+      - name: REDIS_MAXMEMORY
+        valueFrom:
+          resourceFieldRef:
+            containerName: redis
+            resource: requests.memory
+            divisor: 1Mi  # Convert bytes to MB
+    extraFlags:
+      - "--loadmodule /opt/redis-stack/lib/rejson.so"
+      - "--appendonly no"
+      - "--maxmemory-policy allkeys-lru"
+      - "--maxmemory ${REDIS_MAXMEMORY}mb"
+
+# Additional volumes on the output Deployment definition.
+volumes:
+  - name: cache-volume
+    persistentVolumeClaim:
+      claimName: dfm-cache
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts:
+  - name: cache-volume
+    mountPath: /cache
+    readOnly: false
+
+site:
+  name: mini1
+  config:
+    path: /etc/site-config
+    file: config.yaml
+
+  secrets:
+    enabled: false
+    path: /var/secrets
+    name: dfm-execute-site-secrets
+    file: secrets.json

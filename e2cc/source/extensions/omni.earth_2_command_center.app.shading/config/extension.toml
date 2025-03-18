@@ -1,0 +1,45 @@
+[package]
+# Semantic Versioning is used: https://semver.org/
+version = "1.0.7"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "Shading Extension for Earth-2"
+description = "Contains Shader Library and Utils for Earth-2"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "setup"
+
+# Keywords for the extension
+keywords = ["kit"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+# Use omni.ui to build simple UI
+[dependencies]
+"omni.client" = {}
+"omni.ui" = {}
+"omni.usd" = {}
+"omni.kit.commands" = {}
+"omni.kit.notification_manager" = {}
+"omni.earth_2_command_center.app.core" = {}
+"omni.kit.pip_archive" = {} # for numpy
+
+# Main python module this extension provides
+[[python.module]]
+name = "omni.earth_2_command_center.app.shading"
+
+[settings]
+persistent.app.stage.materialStrength = "weakerThanDescendants"

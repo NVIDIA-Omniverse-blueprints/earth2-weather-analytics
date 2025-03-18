@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-process
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "earth2.selectors" . | nindent 6 }}
+      app.kubernetes.io/component: process
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/site-config.yaml") . | sha256sum }}
+      labels:
+        {{- include "earth2.labels" . | nindent 8 }}
+        app.kubernetes.io/component: process
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.ngcImagePullSecretName }}
+      initContainers:
+        - name: wait-for-redis
+          image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.busybox.repository }}:{{ .Values.image.busybox.tag }}"
+          imagePullPolicy: {{ .Values.image.busybox.pullPolicy }}
+          {{- include "earth2.busybox.command" . | nindent 10 }}
+          env:
+          - name: K8S_REDIS_HOST
+            value: {{ tpl .Values.redis.host . | quote }}
+          - name: K8S_REDIS_PORT
+            value: {{ .Values.redis.port | quote }}
+      containers:
+        - name: process
+          image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.process.repository }}:{{ .Values.image.process.tag }}"
+          imagePullPolicy: {{ .Values.image.process.pullPolicy }}
+          ports:
+            - name: http-process
+              containerPort: {{ .Values.service.process.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: parse-secrets-script
+              mountPath: /scripts
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: {{ .Values.otel.collector }}
+          - name: OTEL_METRICS_EXPORTER
+            value: none
+          - name: OTEL_TRACES_EXPORTER
+            value: {{ .Values.otel.traces_exporter }}
+          - name: OTEL_EXPORTER_OTLP_INSECURE
+            value: "true"
+          - name: FASTAPI_PORT
+            value: {{ .Values.service.process.port | quote }}
+          - name: K8S_PROCESS_REDIS_HOST
+            value: {{ tpl .Values.redis.host . | quote }}
+          - name: K8S_PROCESS_REDIS_PORT
+            value: {{ .Values.redis.port | quote }}
+          - name: K8S_PROCESS_REDIS_DB
+            value: {{ .Values.redis.db | quote }}
+          - name: K8S_PROCESS_SITE_NAME
+            value: {{ .Values.site.name | quote }}
+          # - name: K8S_PROCESS_REDIS_PASSWORD
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.redis.secretName }}
+          #       key:  {{ .Values.redis.secretKey }}
+          - name: DFM_AUTH_METHOD
+            value: "none"
+          - name: DFM_AUTH_API_KEY
+            value: ""
+          - name: SERVICE_LOGGING_ENABLE_JSON
+            value: {{ .Values.logging.json.enabled | quote }}
+
+      volumes:
+        - name: parse-secrets-script
+          configMap:
+            name: {{ .Release.Name }}-parse-nvcf-secrets
+            defaultMode: 0755
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

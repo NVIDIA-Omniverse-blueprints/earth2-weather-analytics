@@ -1,0 +1,45 @@
+[package]
+# Semantic Versionning is used: https://semver.org/
+version = "0.1.0"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "DFM Connector UI"
+description = "Integrates Earth-2 Command Center with Data Federation Mesh"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "example"
+
+# Keywords for the extension
+keywords = ["kit", "example"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+[dependencies]
+"omni.ui" = {}
+"omni.kit.window.filepicker" = {}
+"omni.earth_2_command_center.app.core" = {}
+"omni.earth_2_command_center.app.dfm" = {}
+"omni.earth_2_command_center.app.window.feature_properties" = {}
+
+# Main python module this extension provides
+[[python.module]]
+name = "omni.earth_2_command_center.app.dfm_ui"
+
+[[python.module]]
+path = "pip_prebundle"
+
+[settings]
+# Data Federation Engine configuration

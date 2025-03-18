@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # TODO: Headless services (clusterIP: None) are usually named with "-headless"
+  # suffix. Why does this service need to be headless?
+  name: {{ .Release.Name }}-scheduler-headless
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "earth2.selectors" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+  ports:
+    - port: {{ .Values.service.scheduler.port }}
+      targetPort: http-scheduler
+      protocol: TCP
+      name: http-scheduler
+  type: {{ .Values.service.scheduler.type }}
+  clusterIP: None

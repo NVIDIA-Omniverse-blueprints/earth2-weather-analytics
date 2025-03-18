@@ -1,0 +1,18 @@
+{{- if .Values.nim.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-nim
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "earth2.selectors" . | nindent 4 }}
+    app.kubernetes.io/component: nim
+  ports:
+  - name: inference
+    port: {{ .Values.service.nim.port }} # TODO: 80?
+    targetPort: inference # TODO: This can't be used with clusterIP: None
+  type: {{ .Values.service.nim.type }}
+  clusterIP: None
+{{- end }}

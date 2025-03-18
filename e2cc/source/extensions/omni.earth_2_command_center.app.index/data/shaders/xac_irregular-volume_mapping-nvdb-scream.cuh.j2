@@ -1,0 +1,257 @@
+NV_IDX_XAC_VERSION_1_0
+
+#define M_PI_F 3.14159265358979323846264338327950288f
+
+using nanovdb::Fp4;
+using nanovdb::Fp8;
+using nanovdb::Fp16;
+using nanovdb::FpN;
+
+using namespace nv::index::xac;
+using namespace nv::index::xaclib;
+
+struct FieldDescriptor {
+    float2 lat_range;
+    float2 lon_range;
+    float2 alt_range;
+    int channel_index;
+};
+
+struct ParamBlock {
+    float sun_lon;
+    float sun_lat;
+    float slab_base_radius;
+    float slab_thickness;
+
+{%- if fields|length > 0 %}
+    // Fields descriptions
+    FieldDescriptor fields[{{ fields|length }}];
+{%- endif %}
+};
+
+{%- for field in fields %}
+{%- if field.zrectilinear_mapping %}
+__constant__ float rectilinear_mapping_{{loop.index0}}[] = {
+    {%- for v in field.zrectilinear_mapping %} {{ v }}f, {%- endfor %} };
+{%- endif %}
+{%- endfor %}
+
+class Volume_sample_program
+{
+    NV_IDX_VOLUME_SAMPLE_PROGRAM
+
+    // global spherical shading parameters
+    const float min_dark = 0.2f;
+    const float max_dark = 1.0f;
+
+    // Misc
+    const bool flip_height          = false; // FIXME: should be per field instead.
+    const bool use_height_shading   = true;
+
+    // Sun
+    float3 sun_direction = make_float3(1.0f, 0.0f, 0.0f);
+
+    // Projection volume
+    const float3 center_offset = make_float3(0.0f, 0.0f, 0.0f);
+    float slab_base_radius = 4950.0f;
+    float slab_thickness = 100.0f;
+
+    const ParamBlock* shader_params = nullptr;
+
+public:
+    NV_IDX_DEVICE_INLINE_MEMBER
+    void initialize()
+    {
+        shader_params = state.bind_parameter_buffer<ParamBlock>(0);
+
+        const float sun_lon = shader_params->sun_lon * M_PI / 180.0f;
+        const float sun_lat = shader_params->sun_lat * M_PI / 180.0f;
+
+        sun_direction = get_world_pos(sun_lat, sun_lon);
+
+        slab_base_radius = shader_params->slab_base_radius;
+        slab_thickness = shader_params->slab_thickness;
+    }
+
+    // Input is latitide and longitude in radians
+    // Output is normalized space coordinates
+    NV_IDX_DEVICE_INLINE_MEMBER
+    float3 get_world_pos(float lat, float lon) const {
+        lat = M_PI_F / 2.0f - lat;
+
+        float si_lat, co_lat;
+        sincosf(lat, &si_lat, &co_lat);
+
+        float si_lon, co_lon;
+        sincosf(lon, &si_lon, &co_lon);
+
+        return make_float3(
+            si_lat * co_lon,
+            si_lat * si_lon,
+            co_lat);
+    }
+
+    // Input is a sphere position in normalized space (unit vector)
+    // Output is the lat and longitude coordinates as normalized (-1:1) values
+    NV_IDX_DEVICE_INLINE_MEMBER
+    float2 get_sphere_pos(float3 sample_position) const
+    {
+        // get projected position in normalized sphere coordinates
+        return make_float2(
+            atan2f(sample_position.y, sample_position.x) / M_PI_F, // longitude
+            (M_PI_F -  2.0f * acosf(sample_position.z)) / M_PI_F  // latitude
+        );
+    }
+
+    NV_IDX_DEVICE_INLINE_MEMBER
+    float4 apply_atmospheric_scattering(float4 sample_color, float normalized_height) const {
+        const auto& colormap_height = state.self.get_colormap();
+
+        // Clamp normalized height so that it saves us from the triangulation of the projected
+        // structure
+        float4 height_color = colormap_height.lookup(min(normalized_height, 0.9f) / 0.9f);
+        sample_color = sample_color.w > height_color.w ? sample_color : height_color;
+
+        return sample_color;
+    }
+
+    NV_IDX_DEVICE_INLINE_MEMBER
+    float4 apply_sun_lighting(float4 sample_color, float3 sample_normalized_position) const {
+        const float dvs = dot(sample_normalized_position, sun_direction);
+
+        const float alpha = sample_color.w;
+        sample_color = sample_color * clamp(dvs, min_dark, max_dark);
+        sample_color.w = alpha;
+
+        return sample_color;
+    }
+
+    template<typename T, int SIZE>
+    NV_IDX_DEVICE_INLINE_MEMBER
+    float remap_sample(float value, T* samples) const {
+        if (value <= 0.0f) return 0.0f;
+        if (value >= 1.0f) return 1.0f;
+
+        T v = value * SIZE;
+        T t = v - floorf(v);
+        int bucket_low = v;
+        int bucket_high = min(bucket_low + 1.0f, SIZE - 1.0f);
+
+        return (T(1.0f) - t) * samples[bucket_low] + t * samples[bucket_high];
+    }
+
+    template<>
+    float remap_sample<void, 0>(float value, void* samples) const {
+        return value;
+    }
+
+    template<typename SamplerT, int Z_SAMPLES_SIZE = 0, typename ZSamplesT = void>
+    NV_IDX_DEVICE_INLINE_MEMBER
+    bool sample_merge_field(float4* sample_color, float* sum_alpha, int field_index, int volume_index, int channel_index, float2 sample_slab_position, float sample_slab_height, ZSamplesT* z_samples = nullptr) const {
+        if (!state.scene.is_valid_element<VDB_volume>(volume_index)) return false;
+
+        const auto& field = state.scene.access<VDB_volume>(volume_index);
+        const auto& field_sampler = field.generate_sampler<float,VDB_volume_filter_mode::TRILINEAR, SamplerT>(channel_index);
+
+        const auto& field_colormap = field.get_colormap();
+
+        const float2 lat_range = shader_params->fields[field_index].lat_range;
+        const float2 lon_range = shader_params->fields[field_index].lon_range;
+        const float2 alt_range = shader_params->fields[field_index].alt_range;
+
+        const float2 sample_position_remapped =  (sample_slab_position - make_float2(lon_range.x, lat_range.x)) / make_float2(lon_range.y - lon_range.x, lat_range.y - lat_range.x);
+        const float sample_height_remapped = remap_sample<ZSamplesT, Z_SAMPLES_SIZE>((sample_slab_height - alt_range.x) / (alt_range.y - alt_range.x), z_samples);
+
+        if (sample_position_remapped.x < 0.0f || sample_position_remapped.x >1.0f ||
+            sample_position_remapped.y < 0.0f || sample_position_remapped.y >1.0f ||
+            sample_height_remapped < 0.0f || sample_height_remapped >1.0f) return false;
+
+
+        const float3 normalized_position = make_float3(
+            sample_position_remapped.x,
+            sample_position_remapped.y,
+            sample_height_remapped
+        );
+
+        const float3 voxel_position = (flip_height ?
+            make_float3(normalized_position.x, normalized_position.y, 1.0f - normalized_position.z)
+                : normalized_position) * (field.get_volume_bbox_max() - field.get_volume_bbox_min()) + field.get_volume_bbox_min();
+
+        // Display voxels so we can check for the rectilinear pattern
+
+        // int color = voxel_position.z;
+        // *sample_color = make_float4(color % 3 == 0, color % 3 == 1, color % 3 == 2, 1.0f);
+        // return true;
+
+        const float sample_value = field_sampler.fetch_sample(voxel_position);
+        float4 this_sample_color = field_colormap.lookup(sample_value);
+
+
+        float alpha = this_sample_color.w;
+        *sum_alpha += alpha;
+        this_sample_color *= alpha;
+        this_sample_color.w = alpha;
+
+        *sample_color += this_sample_color;
+
+        return true;
+    }
+
+    NV_IDX_DEVICE_INLINE_MEMBER
+    int execute(
+        const Sample_info_self& sample_info,
+              Sample_output&    sample_output) const
+    {
+        // Compute normalized sphere position. Basically normalized latitude, longitude (-1, +1) and altitude (0, 1)
+        // coordinates.
+
+        const float3 sample_position = sample_info.scene_position - center_offset;
+        const float sample_distance2 = dot(sample_position, sample_position);
+        const float sample_height = sqrt(sample_distance2);
+        const float3 sample_normalized_position = sample_position / sample_height;
+
+        const float2 sample_slab_position = get_sphere_pos(sample_normalized_position); // -1:1, -1:1
+        const float sample_slab_height = (sample_height - slab_base_radius) / slab_thickness; // 0:1
+
+        if (sample_slab_height < 0.0f) { // Can happen because of precision. We are now inside the earth sphere. Bail out.
+            return NV_IDX_PROG_DISCARD_SAMPLE;
+        }
+
+{%- if fields|length > 0 %}
+        // Prepare for iterating over the field
+        float4 sum_sample_color = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+        float sum_alpha = 0.0f;
+{% for field in fields %}
+{% set volume_path = field.volume.volume.GetPrim().GetPath() %}
+{% set volume_index = volume_to_slot.get(volume_path) %}
+{%- if field.zrectilinear_mapping %}
+        // Rectilinear volume
+        sample_merge_field<{{ field.sampler_type }}, {{ field.zrectilinear_mapping|length }}>(
+            &sum_sample_color, &sum_alpha, {{loop.index0 }}, {{ volume_index }}, {{ field.channel_index }}, sample_slab_position, sample_slab_height,
+            rectilinear_mapping_{{ loop.index0 }}
+            );
+{%- else %}
+        // Uniform volume
+        sample_merge_field<{{ field.sampler_type }}>(&sum_sample_color, &sum_alpha, {{loop.index0 }}, {{ volume_index }}, {{ field.channel_index }}, sample_slab_position, sample_slab_height);
+{%- endif %}
+{%- endfor %}
+
+        if (sum_alpha > 1e-6f) {
+            sum_sample_color /= sum_alpha;
+            sum_sample_color.w = sum_alpha / {{ fields|length }};
+        }
+        const float4 sample_color = use_height_shading ?
+            apply_atmospheric_scattering(sum_sample_color, sample_slab_height) : sum_sample_color;
+{% else %}
+        const float4 sample_color = apply_atmospheric_scattering(make_float4(0.0f, 0.0f, 0.0f, 0.0f), sample_slab_height);
+{%- endif %}
+
+        // Apply global spherical shading
+        const float4 lit_sample_color = apply_sun_lighting(sample_color, sample_normalized_position);
+
+        // set sample output
+        sample_output.set_color(lit_sample_color);
+
+        return NV_IDX_PROG_OK;
+    }
+}; // class Volume_sample_program

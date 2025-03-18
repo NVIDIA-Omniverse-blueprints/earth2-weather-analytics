@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-scheduler
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "earth2.selectors" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/site-config.yaml") . | sha256sum }}
+      labels:
+        {{- include "earth2.labels" . | nindent 8 }}
+        app.kubernetes.io/component: scheduler
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.ngcImagePullSecretName }}
+      initContainers:
+        - name: wait-for-redis
+          image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.busybox.repository }}:{{ .Values.image.busybox.tag }}"
+          imagePullPolicy: {{ .Values.image.busybox.pullPolicy }}
+          {{- include "earth2.busybox.command" . | nindent 10 }}
+          env:
+          - name: K8S_REDIS_HOST
+            value: {{ tpl .Values.redis.host . | quote }}
+          - name: K8S_REDIS_PORT
+            value: {{ .Values.redis.port | quote }}
+      containers:
+        - name: scheduler
+          image: "{{ include "earth2.image.prefix" . }}{{ .Values.image.scheduler.repository }}:{{ .Values.image.scheduler.tag }}"
+          imagePullPolicy: {{ .Values.image.scheduler.pullPolicy }}
+          ports:
+            - name: http-scheduler
+              containerPort: {{ .Values.service.scheduler.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: {{ .Values.otel.collector }}
+          - name: OTEL_METRICS_EXPORTER
+            value: none
+          - name: OTEL_TRACES_EXPORTER
+            value: otlp
+          - name: OTEL_EXPORTER_OTLP_INSECURE
+            value: "true"
+          - name: SERVICE_LOGGING_ENABLE_JSON
+            value: {{ .Values.logging.json.enabled | quote }}
+          - name: K8S_SCHEDULER_REDIS_HOST
+            value: {{ tpl .Values.redis.host . | quote }}
+          - name: K8S_SCHEDULER_REDIS_PORT
+            value: {{ .Values.redis.port | quote }}
+          - name: K8S_SCHEDULER_REDIS_DB
+            value: {{ .Values.redis.db | quote }}
+          # - name: K8S_SCHEDULER_REDIS_PASSWORD
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.redis.secretName }}
+          #       key:  {{ .Values.redis.secretKey }}
+          # - name: DFM_AUTH_METHOD
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.auth.secret }}
+          #       key:  {{ .Values.auth.method.key }}
+          # - name: DFM_AUTH_API_KEY
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: {{ .Values.auth.secret }}
+          #       key:  {{ .Values.auth.api_key.key }}
+          - name: DFM_AUTH_METHOD
+            value: "none"
+          - name: DFM_AUTH_API_KEY
+            value: ""
+      volumes:
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

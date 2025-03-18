@@ -1,0 +1,57 @@
+#displayed application name
+name = "Earth-2 Control Center"
+#displayed before application name in launcher
+productArea = "Omniverse"
+version = "2025.1.0"
+
+#unique identifier for component, all lower case, persists between versions
+slug = "earth-2-control-center"
+## install and launch instructions by environment
+[defaults.windows-x86_64]
+url = ""
+entrypoint = "${productRoot}/omni.app.earth-2-control-center.bat"
+args = ["--/app/environment/name='launcher'"]
+
+[defaults.windows-x86_64.open]
+command = "${productRoot}/omni.app.earth-2-control-center.bat"
+args = ['--exec "open_stage.py ${file}"', "--/app/environment/name='launcher'"]
+
+[defaults.windows-x86_64.environment]
+
+[defaults.windows-x86_64.install]
+pre-install = ""
+pre-install-args = []
+install = ""
+install-args = []
+post-install = "${productRoot}/omni.app.earth-2-control-center.warmup.bat"
+post-install-args = ["--/app/environment/name='launcher_warmup'"]
+
+[defaults.windows-x86_64.uninstall]
+pre-uninstall = ""
+pre-uninstall-args = []
+uninstall = ""
+uninstall-args = []
+post-uninstall = ""
+post-uninstall-args = []
+
+[defaults.linux-x86_64]
+url = ""
+entrypoint = "${productRoot}/omni.app.earth-2-control-center.sh"
+args = ["--/app/environment/name='launcher'"]
+[defaults.linux-x86_64.environment]
+
+[defaults.linux-x86_64.install]
+pre-install = ""
+pre-install-args = []
+install = ""
+install-args = []
+post-install = ""
+post-install-args = []
+
+[defaults.linux-x86_64.uninstall]
+pre-uninstall = ""
+pre-uninstall-args = []
+uninstall = ""
+uninstall-args = []
+post-uninstall = ""
+post-uninstall-args = []

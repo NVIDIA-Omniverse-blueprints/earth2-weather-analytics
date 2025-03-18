@@ -1,0 +1,796 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+import ::anno::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+import ::debug::*;
+
+// local imports
+import common::*;
+import utils::*;
+
+// ========================================
+// Enums
+// ========================================
+export enum projection_preset
+{
+  projection_preset_invalid = 0
+  [[
+    anno::display_name("Invalid")
+  ]],
+  projection_preset_latlong
+  [[
+    anno::display_name("Lat/Lon")
+  ]],
+  projection_preset_diamond
+  [[
+    anno::display_name("Diamond")
+  ]],
+  projection_preset_goes
+  [[
+    anno::display_name("GOES")
+  ]]
+};
+
+export enum channel_select_preset
+{
+  channel_select_R = 0
+  [[
+    anno::display_name("R")
+  ]],
+  channel_select_G
+  [[
+    anno::display_name("G")
+  ]],
+  channel_select_B
+  [[
+    anno::display_name("B")
+  ]],
+  channel_select_RGB
+  [[
+    anno::display_name("RGB")
+  ]]
+};
+
+// ========================================
+// Helper Functions
+// ========================================
+// TODO: we need to differentiate between geocentric and geodesic coords
+float2 get_latlong_coords()
+{
+  float3 sphere_pos = math::normalize(
+     state::transform_point(state::coordinate_internal, state::coordinate_object, state::position()));
+
+  float latitude = math::asin(sphere_pos.z);
+  float longitude = utils::wrap_to_range(math::atan2(sphere_pos.y, sphere_pos.x), 0.0f, 2.0f*math::PI);
+
+  return float2(latitude, longitude);
+}
+
+float2 latlong_to_uv(float2 latlong)
+{
+  //latlong = float2(
+  //    utils::wrap_to_range(latlong[0], -math::PI*0.5f, math::PI*0.5f),
+  //    utils::wrap_to_range(latlong[1], 0.0f, 2.0f*math::PI));
+
+  return float2(
+      latlong[1]/(2.0f*math::PI),
+      (latlong[0]+math::PI*0.5f)/math::PI);
+}
+
+float2 get_shifted_latlong(float2 latlong, uniform float longitudinal_offset = 0.0f)
+{
+  return float2(
+      latlong[0],
+      utils::wrap_to_range(latlong[1] + longitudinal_offset, 0.0f, 2.0f*math::PI));
+}
+
+float2 apply_flip(float2 uv, uniform bool flip_u, uniform bool flip_v)
+{
+  return float2(
+      flip_u ? 1.0f-uv[0] : uv[0],
+      flip_v ? 1.0f-uv[1] : uv[1]);
+}
+
+float2 apply_affine(float2 latlong, uniform float2x3 A)
+{
+  //auto result = A*float3(latlong[1], latlong[0], 1.0f);
+  auto result = float3(latlong[1], latlong[0], 1.0f)*A;
+  return float2(result[0], result[1]);
+}
+
+bool is_outside(float2 uv)
+{
+  return (uv[0] < 0.0f || uv[0] > 1.0f) || (uv[1] < 0.0f || uv[1] > 1.0f);
+}
+
+// GOES Transformation
+// https://www.goes-r.gov/products/docs/PUG-L2+-vol5.pdf
+// section 4.2.8.2
+// x = goes.x, y = goes.y, z = visible
+float3 latlon_to_goes(float2 latlon,
+        uniform float lambda0,
+        uniform float perspective_point_height) {
+    // constants
+    const float r_eq = 6378137.0f;
+    const float r_pol = 6356752.31414f;
+    float H = r_eq + perspective_point_height;
+    const float r2_ratio = (r_eq*r_eq)/(r_pol*r_pol);
+    const float e = math::sqrt((r_eq*r_eq - r_pol*r_pol)/(r_eq*r_eq));
+
+    float phi_c = math::atan(math::tan(latlon.x)/r2_ratio);
+    float[2] sincos_phi_c = math::sincos(phi_c);
+    float r_c = r_pol * math::rsqrt(1.0f - e*e*sincos_phi_c[1]*sincos_phi_c[1]);
+
+    float3 s = float3(
+            H - r_c*sincos_phi_c[1]*math::cos(latlon.y-lambda0),
+            -r_c*sincos_phi_c[1]*math::sin(latlon.y-lambda0),
+            r_c*sincos_phi_c[0]);
+
+    bool visible = H*(H-s.x) >= s.y*s.y + r2_ratio*s.z*s.z;
+
+    if (!visible) {
+        return float3(0,0,0);
+    } else {
+        float2 goes_coords = float2(
+                math::asin(-math::normalize(s).y),
+                math::atan(s.z/s.x));
+        return float3(goes_coords.x, goes_coords.y, 1.0f);
+    }
+}
+
+// ========================================
+// Shaders
+// ========================================
+float2 get_latlong_lookup_uvs(
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0))
+{
+  float2 latlong = get_shifted_latlong(get_latlong_coords(), longitudinal_offset);
+
+  float2 lookup_uv;
+  if (use_affine)
+  {
+    uniform auto A = float2x3(
+        affine_row1,
+        affine_row2);
+    lookup_uv = apply_affine(latlong, A);
+  }
+  else
+  {
+    lookup_uv = latlong_to_uv(latlong);
+  }
+
+  lookup_uv = apply_flip(lookup_uv, flip_u, flip_v);
+
+  return lookup_uv;
+}
+
+export color lookup_latlong_texture(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_color(texture, lookup_uv,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_repeat,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_clamp)*mask;
+  else
+    return color(mask);
+}
+
+export float lookup_latlong_texture_mono(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_float(texture, lookup_uv,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_repeat,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_clamp)*mask;
+  else
+    return float(mask);
+}
+
+// ========================================
+// Latlong Splits
+// ========================================
+float3 split_uv(float2 uv, uniform int split_u, uniform int split_v)
+{
+  return float3(
+     utils::wrap_to_range(uv[0]*split_u, 0.0f, 1.0f),
+     utils::wrap_to_range(uv[1]*split_v, 0.0f, 1.0f),
+     math::floor((1.0f-uv[1])*split_v)*split_u + math::floor(uv[0]*split_u)
+     );
+}
+
+color lookup_multi_texture(
+    float2 uv,
+    int texture_idx,
+    uniform texture_2d[<N>] textures
+   )
+{
+  color result = color(0);
+  for (int i=0; i<N; i++) {
+    if (texture_idx == i) {
+      if (tex::texture_isvalid(textures[i]))
+        result += tex::lookup_color(textures[i], uv,
+            tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+      else
+        result = color(1);
+    }
+  }
+  return result;
+}
+
+float lookup_multi_texture_mono(
+    float2 uv,
+    int texture_idx,
+    uniform texture_2d[<N>] textures
+   )
+{
+  float result = float(0);
+  for (int i=0; i<N; i++) {
+    if (texture_idx == i) {
+      if (tex::texture_isvalid(textures[i]))
+        result += tex::lookup_float(textures[i], uv,
+            tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+      else
+        result = 1.0f;
+    }
+  }
+  return result;
+}
+
+color lookup_latlong_splits(
+    float2 lookup_uv,
+    uniform texture_2d[<N>] textures,
+    uniform int split_u, uniform int split_v)
+{
+  float3 split_lookup = split_uv(lookup_uv, split_u, split_v);
+  float2 split_lookup_uv = float2(split_lookup[0], split_lookup[1]);
+  int texture_idx = int(split_lookup[2]);
+  return lookup_multi_texture(split_lookup_uv, texture_idx, textures);
+}
+
+float lookup_latlong_splits_mono(
+    float2 lookup_uv,
+    uniform texture_2d[<N>] textures,
+    uniform int split_u, uniform int split_v)
+{
+  float3 split_lookup = split_uv(lookup_uv, split_u, split_v);
+  float2 split_lookup_uv = float2(split_lookup[0], split_lookup[1]);
+  int texture_idx = int(split_lookup[2]);
+  return lookup_multi_texture_mono(split_lookup_uv, texture_idx, textures);
+}
+
+export color lookup_latlong_texture_split_4_2(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1, uniform texture_2d texture_0_2, uniform texture_2d texture_0_3,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1, uniform texture_2d texture_1_2, uniform texture_2d texture_1_3,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+
+  uniform texture_2d[8] textures = texture_2d[](
+      texture_0_0, texture_0_1, texture_0_2, texture_0_3,
+      texture_1_0, texture_1_1, texture_1_2, texture_1_3);
+  return lookup_latlong_splits(lookup_uv, textures, 4, 2) * mask;
+}
+
+export color lookup_latlong_texture_split_2_1(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+
+  uniform texture_2d[2] textures = texture_2d[](texture_0_0, texture_0_1);
+  return lookup_latlong_splits(lookup_uv, textures, 2, 1) * mask;
+}
+
+export color lookup_latlong_texture_split_2_2(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+
+  uniform texture_2d[4] textures = texture_2d[](
+      texture_0_0, texture_0_1,
+      texture_1_0, texture_1_1);
+  return lookup_latlong_splits(lookup_uv, textures, 2, 2) * mask;
+}
+
+export float lookup_latlong_texture_split_4_2_mono(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1, uniform texture_2d texture_0_2, uniform texture_2d texture_0_3,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1, uniform texture_2d texture_1_2, uniform texture_2d texture_1_3,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+
+  uniform texture_2d[8] textures = texture_2d[](
+      texture_0_0, texture_0_1, texture_0_2, texture_0_3,
+      texture_1_0, texture_1_1, texture_1_2, texture_1_3);
+  return lookup_latlong_splits_mono(lookup_uv, textures, 4, 2) * mask;
+}
+
+export float lookup_latlong_texture_split_2_1_mono(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+
+  uniform texture_2d[2] textures = texture_2d[](texture_0_0, texture_0_1);
+  return lookup_latlong_splits_mono(lookup_uv, textures, 2, 1) * mask;
+}
+
+export float lookup_latlong_texture_split_2_2_mono(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !is_outside(lookup_uv) : true;
+
+  uniform texture_2d[4] textures = texture_2d[](
+      texture_0_0, texture_0_1,
+      texture_1_0, texture_1_1);
+  return lookup_latlong_splits_mono(lookup_uv, textures, 2, 2) * mask;
+}
+
+// ========================================
+// GOES Textures
+// ========================================
+export color lookup_goes_texture(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform float perspective_point_height = 35786023.0f,
+    uniform float2 x_range = float2(-0.101332f, 0.038612f),
+    uniform float2 y_range = float2(0.044268f, 0.128212f),
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool black_outside = true)
+{
+  float2 latlong = get_latlong_coords();
+  float3 goes = latlon_to_goes(latlong,
+          longitudinal_offset, perspective_point_height);
+
+  float2 lookup_uv = apply_flip(float2(
+          (goes.x-x_range.x)/(x_range.y-x_range.x),
+          (goes.y-y_range.x)/(y_range.y-y_range.x)),
+          flip_u, flip_v);
+  bool mask =
+      (black_outside) ? !is_outside(lookup_uv) : true;
+
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_color(texture, lookup_uv,
+        tex::wrap_clip, tex::wrap_clip)*mask;
+  else
+    return color(mask);
+}
+
+export float lookup_goes_texture_mono(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform float perspective_point_height = 35786023.0f,
+    uniform float2 x_range = float2(-0.101332f, 0.038612f),
+    uniform float2 y_range = float2(0.044268f, 0.128212f),
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool black_outside = true)
+{
+  float2 latlong = get_latlong_coords();
+  float3 goes = latlon_to_goes(latlong,
+          longitudinal_offset, perspective_point_height);
+
+  float2 lookup_uv = apply_flip(float2(
+          (goes.x-x_range.x)/(x_range.y-x_range.x),
+          (goes.y-y_range.x)/(y_range.y-y_range.x)),
+          flip_u, flip_v);
+  bool mask =
+      (black_outside) ? !is_outside(lookup_uv) : true;
+
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_float(texture, lookup_uv,
+        tex::wrap_clip, tex::wrap_clip)*mask;
+  else
+    return float(mask);
+}
+
+float3 get_geos_uvs(
+        float3 P,
+        uniform float longitudinal_offset,
+        uniform float perspective_point_height = 35786023.0f) {
+    float earth_radius = math::length(P);
+    const float true_earth_radius_eq = 6378137.0f; // [m]
+    //const float true_earth_radius_pol = 6356752.31414f; // [m]
+    float adjusted_height = perspective_point_height/true_earth_radius_eq*earth_radius;
+
+    float2 latlong = get_latlong_coords();
+    float[2] sincos_lat = math::sincos(latlong.x);
+    float[2] sincos_lon = math::sincos(latlong.y-longitudinal_offset);
+
+    //const float r_ratio = true_earth_radius_pol/true_earth_radius_eq;
+    //const float e2 = 1-r_ratio*r_ratio;
+    // we don't use geodesic latitudes for the main mapping so we can't use it here
+    float r_c = earth_radius;//*math::rsqrt(1.0f - e2*sincos_lat[1]*sincos_lat[1]);
+
+    float3 s = float3(
+            (adjusted_height+earth_radius) - r_c*sincos_lat[1]*sincos_lon[1],
+            -r_c*sincos_lat[1]*sincos_lon[0],
+            r_c*sincos_lat[0]);
+
+    float x = math::asin(-s.y/math::length(s))/0.151844f;
+    float y = math::atan(s.z/s.x)/0.151844f;
+
+    //float3 No = math::normalize(P);
+    return float3(0.5f*(x+1), 0.5f*(y+1), sincos_lat[1]*sincos_lon[1]);
+
+    //float earth_radius = math::length(P);
+    //const float true_earth_radius_eq = 6378137.0f; // [m]
+    //const float true_earth_radius_pol = 6356752.31414f; // [m]
+    //float adjusted_height = perspective_point_height/true_earth_radius_eq*earth_radius;
+
+    //const float r_ratio = true_earth_radius_pol/true_earth_radius_eq;
+    //const float e2 = 1-r_ratio*r_ratio;
+    //float theta = math::asin(P.z/earth_radius);
+    ////float stretch = math::sqrt(
+    ////        math::cos(theta)*math::cos(theta) +
+    ////        r_ratio*r_ratio*math::sin(theta)*math::sin(theta));
+    //float r_c = math::rsqrt(1.0f - e2*math::cos(theta)*math::cos(theta));
+    //P *= r_c;
+
+    //// optimize away the matrix multiplications
+    //uniform float[2] sincos_theta = math::sincos(longitudinal_offset);
+    //float3x3 rot_mat = float3x3(
+    //        sincos_theta[1], -sincos_theta[0], 0,
+    //        sincos_theta[0],  sincos_theta[1], 0,
+    //        0, 0, 1);
+    //float3 rot_pos = rot_mat*P;
+
+    //float3 sat_x = rot_mat*float3(-1,0,0);
+    //float3 sat_z = float3(0,0,1);
+    //float3 sat_y = rot_mat*float3(0,-1,0);
+
+    //float3 s = (sat_x*P.x+sat_y*P.y+sat_z*P.z);
+    //s.x += earth_radius+adjusted_height;
+    //float x = math::asin(-s.y/math::length(s))/0.151844f;
+    //float y = math::atan(s.z/s.x)/0.151844f;
+
+    //float3 No = math::normalize(P);
+    //return float3(0.5f*(x+1), 0.5f*(y+1), (rot_mat*No).x);
+}
+
+export color lookup_goes_disk_texture(
+        uniform texture_2d texture,
+        uniform float longitudinal_offset = 0.0f,
+        uniform float perspective_point_height = 35786023.0f,
+        uniform bool flip_u=false, uniform bool flip_v=false,
+        uniform bool black_outside = true)
+{
+    float3 Po = state::transform_point(state::coordinate_internal, state::coordinate_object, state::position());
+    float3 uvs = get_geos_uvs(Po, longitudinal_offset, perspective_point_height);
+
+    float mask = math::clamp((uvs.z-0.3f)/(0.5f-0.3f), 0.0f, 1.0f);
+    float2 lookup_uv = apply_flip(float2(uvs.x, uvs.y), flip_u, flip_v);
+    mask *= (black_outside) ? !is_outside(lookup_uv) : true;
+
+    if (tex::texture_isvalid(texture))
+        return tex::lookup_color(texture, lookup_uv,
+                tex::wrap_clip, tex::wrap_clip)*mask;
+    else
+        return color(mask);
+}
+
+export float lookup_goes_disk_texture_mono(
+        uniform texture_2d texture,
+        uniform float longitudinal_offset = 0.0f,
+        uniform float perspective_point_height = 35786023.0f,
+        uniform bool flip_u=false, uniform bool flip_v=false,
+        uniform bool black_outside = true)
+{
+    float3 Po = state::transform_point(state::coordinate_internal, state::coordinate_object, state::position());
+    float3 uvs = get_geos_uvs(Po, longitudinal_offset, perspective_point_height);
+
+    float mask = math::clamp((uvs.z-0.3f)/(0.5f-0.3f), 0.0f, 1.0f);
+    float2 lookup_uv = apply_flip(float2(uvs.x, uvs.y), flip_u, flip_v);
+    mask *= (black_outside) ? !is_outside(lookup_uv) : true;
+
+    if (tex::texture_isvalid(texture))
+        return tex::lookup_float(texture, lookup_uv,
+                tex::wrap_clip, tex::wrap_clip)*mask;
+    else
+        return mask;
+}
+
+// ========================================
+// Diamond Textures
+// ========================================
+//float2 get_diamond_coords(
+//       uniform float pixel_width,
+//    uniform int diamond_idx
+//    [[
+//      anno::unused()
+//    ]],
+//    uniform int diamond_subidx
+//    [[
+//      anno::unused()
+//    ]]
+//    )
+//{
+//  float3 geo_uvs = state::texture_coordinate(0);
+//
+//  float y = math::frac(geo_uvs[1]/pixel_width);
+//  float x = math::frac(geo_uvs[0]/pixel_width);
+//  geo_uvs[0] = math::floor(geo_uvs[0]/pixel_width)*pixel_width +
+//      ((x<(1.0f-y)) ?
+//       //math::min(1.0f, 0.5f*x/(1.0f-y))*pixel_width :
+//       math::min(1.0f, 0.25f)*pixel_width :
+//       math::min(1.0f, 0.75f)*pixel_width);
+//
+//
+//  float2 uvs = float2(
+//      //math::fmod(geo_uvs.y, 10),
+//      //geo_uvs.x);
+//      //geo_uvs.y, geo_uvs.x);
+//      geo_uvs.x, 1.0f-geo_uvs.y);
+//
+//  return uvs;
+//}
+
+int2 get_diamond_texel_coords(
+       uniform int width,
+       uniform int height,
+    uniform int diamond_idx
+    [[
+      anno::unused()
+    ]],
+    uniform int diamond_subidx
+    [[
+      anno::unused()
+    ]]
+    )
+{
+  float3 geo_uvs = state::texture_coordinate(0);
+      uniform float pixel_width = 1.0/height;
+
+  int x_pos = 2*math::floor(geo_uvs[0]/pixel_width);
+  int y_pos = math::clamp(math::floor((1-geo_uvs[1])/pixel_width), 0, height-1);
+  float y = math::frac(geo_uvs[1]/pixel_width);
+  float x = math::frac(geo_uvs[0]/pixel_width);
+  return ((x<(1.0f-y)) ?
+          int2(math::clamp(x_pos+0, 0, width-1), y_pos) :
+          int2(math::clamp(x_pos+1, 0, width-1), y_pos));
+}
+
+export color lookup_diamond_texture(
+    uniform texture_2d diamond_0,
+    uniform texture_2d diamond_1,
+    uniform texture_2d diamond_2,
+    uniform texture_2d diamond_3,
+    uniform texture_2d diamond_4,
+    uniform texture_2d diamond_5,
+    uniform texture_2d diamond_6,
+    uniform texture_2d diamond_7,
+    uniform texture_2d diamond_8,
+    uniform texture_2d diamond_9)
+{
+  uniform int diamond_idx = math::clamp(scene::data_lookup_uniform_float("diamond_idx", 0), 0, 9);
+  uniform int diamond_subidx = scene::data_lookup_uniform_float("diamond_subidx", 0);
+
+  texture_2d[] textures = texture_2d[](
+      diamond_0,
+      diamond_1,
+      diamond_2,
+      diamond_3,
+      diamond_4,
+      diamond_5,
+      diamond_6,
+      diamond_7,
+      diamond_8,
+      diamond_9);
+
+  uniform int width = tex::width(diamond_0);
+  uniform int height = tex::height(diamond_0);
+  int2 texel_coords = get_diamond_texel_coords(width, height, diamond_idx, diamond_subidx);
+  //color lookup = tex::lookup_color(
+  //        textures[diamond_idx], uvs, tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+  color lookup = tex::texel_color(
+      textures[diamond_idx], texel_coords);
+  return lookup;
+}
+
+export float lookup_diamond_texture_mono(
+    uniform texture_2d diamond_0,
+    uniform texture_2d diamond_1,
+    uniform texture_2d diamond_2,
+    uniform texture_2d diamond_3,
+    uniform texture_2d diamond_4,
+    uniform texture_2d diamond_5,
+    uniform texture_2d diamond_6,
+    uniform texture_2d diamond_7,
+    uniform texture_2d diamond_8,
+    uniform texture_2d diamond_9)
+{
+  uniform int diamond_idx = scene::data_lookup_uniform_float("diamond_idx", 0);
+  uniform int diamond_subidx = scene::data_lookup_uniform_float("diamond_subidx", 0);
+
+  texture_2d[] textures = texture_2d[](
+      diamond_0,
+      diamond_1,
+      diamond_2,
+      diamond_3,
+      diamond_4,
+      diamond_5,
+      diamond_6,
+      diamond_7,
+      diamond_8,
+      diamond_9);
+
+  uniform int width = tex::width(diamond_0);
+  uniform int height = tex::height(diamond_0);
+  int2 texel_coords = get_diamond_texel_coords(width, height, diamond_idx, diamond_subidx);
+  float lookup = tex::texel_float(
+      textures[diamond_idx], texel_coords);
+  //float lookup = tex::lookup_float(
+  //        textures[diamond_idx], uvs, tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+  return lookup;
+}
+
+//export color lookup_texture(
+//    uniform projection_preset projection,
+//    uniform channel_select_preset channels,
+//    uniform texture_2d latlon,
+//    uniform texture_2d diamond_0,
+//    uniform texture_2d diamond_1,
+//    uniform texture_2d diamond_2,
+//    uniform texture_2d diamond_3,
+//    uniform texture_2d diamond_4,
+//    uniform texture_2d diamond_5,
+//    uniform texture_2d diamond_6,
+//    uniform texture_2d diamond_7,
+//    uniform texture_2d diamond_8,
+//    uniform texture_2d diamond_9)
+//{
+//  color result = color(0);
+//  switch (projection)
+//  {
+//    case projection_preset_latlong:
+//      result = lookup_latlong_texture(latlon);
+//      break;
+//    case projection_preset_diamond:
+//      result = lookup_diamond_texture(
+//          diamond_0,
+//          diamond_1,
+//          diamond_2,
+//          diamond_3,
+//          diamond_4,
+//          diamond_5,
+//          diamond_6,
+//          diamond_7,
+//          diamond_8,
+//          diamond_9);
+//      break;
+//    default:
+//  }
+//
+//  switch(channels)
+//  {
+//    case channel_select_R:
+//      result = color(float3(result)[0]);
+//      break;
+//    case channel_select_G:
+//      result = color(float3(result)[1]);
+//      break;
+//    case channel_select_B:
+//      result = color(float3(result)[2]);
+//      break;
+//    default:
+//      break;
+//  }
+//  return result;
+//}
+//

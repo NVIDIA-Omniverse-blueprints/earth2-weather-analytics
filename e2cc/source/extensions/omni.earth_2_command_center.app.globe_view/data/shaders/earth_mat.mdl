@@ -1,0 +1,383 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.7;
+
+import ::base::*;
+import ::df::*;
+import ::state::*;
+import ::math::*;
+import ::tex::*;
+import ::anno::*;
+
+//float3 rotate_vector(float3 vec, uniform float3 rot) {
+//  float3 sin_rot = math::sin(rot/180.0f*::math::PI);
+//  float3 cos_rot = math::cos(rot/180.0f*::math::PI);
+//
+//  // extrinsic rot
+//  uniform float3 rot_mat_1 = float3(
+//      cos_rot.y*cos_rot.z, sin_rot.x*sin_rot.y*cos_rot.z - cos_rot.x*sin_rot.z, cos_rot.x*sin_rot.y*cos_rot.z + sin_rot.x*sin_rot.z);
+//  uniform float3 rot_mat_2 = float3(
+//      cos_rot.y*sin_rot.z, sin_rot.x*sin_rot.y*sin_rot.z + cos_rot.x*cos_rot.z, cos_rot.x*sin_rot.y*sin_rot.z - sin_rot.x*cos_rot.z);
+//  uniform float3 rot_mat_3 = float3(
+//      -sin_rot.y, sin_rot.x*cos_rot.y, cos_rot.x*cos_rot.y);
+//
+//  // intrinsic rot
+//  //uniform float3 rot_mat_1 = float3(
+//  //    cos_rot.x*cos_rot.y, cos_rot.x*sin_rot.y*sin_rot.z - sin_rot.x*cos_rot.z, cos_rot.x*sin_rot.y*cos_rot.z + sin_rot.x*sin_rot.z);
+//  //uniform float3 rot_mat_2 = float3(
+//  //    sin_rot.x*cos_rot.y, sin_rot.x*sin_rot.y*sin_rot.z + cos_rot.x*cos_rot.z, sin_rot.x*sin_rot.y*cos_rot.z - cos_rot.x*sin_rot.z);
+//  //uniform float3 rot_mat_3 = float3(
+//  //    -sin_rot.y, cos_rot.y*sin_rot.z, cos_rot.y*cos_rot.z);
+//
+//  return float3(
+//      math::dot(vec, rot_mat_1),
+//      math::dot(vec, rot_mat_2),
+//      math::dot(vec, rot_mat_3));
+//}
+
+struct Layer {
+  float alpha = 0.0f;
+
+  color diffuse_color = color(0);
+
+  float specular_weight = 0.0f;
+  float specular_rougness = 0.0f;
+
+  float3 emission = float3(0.0f);
+
+  float3 normal = float3(0.0f, 0.0f, 1.0f);
+};
+
+Layer combine_layers(Layer[<num_layers>] layers)
+{
+  Layer result;
+
+  for (int i=0; i<num_layers; ++i) {
+    result.alpha += (1.0f-result.alpha)*layers[i].alpha;
+
+    result.diffuse_color = math::lerp(result.diffuse_color, layers[i].diffuse_color, layers[i].alpha);
+
+    result.specular_weight = math::lerp(result.specular_weight, layers[i].specular_weight, layers[i].alpha);
+    result.specular_rougness = math::lerp(result.specular_rougness, layers[i].specular_rougness, layers[i].alpha);
+
+    result.emission += layers[i].emission; //math::lerp(result.emission, layers[i].emission, layers[i].emission);
+
+    result.normal = math::lerp(result.normal, layers[i].normal, layers[i].alpha);
+  }
+
+  return result;
+}
+
+export material EarthMat(
+    // =========================================================================
+    // Earth Layer
+    // =========================================================================
+    uniform bool earth_enable = true
+    [[
+      anno::display_name("Enable"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform float earth_desaturation = 0.0f
+    [[
+      anno::hard_range(0, 1),
+      anno::display_name("Desaturation"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform texture_2d earth_tex = texture_2d()
+    [[
+      anno::display_name("Texture"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform texture_2d earth_normal_map = texture_2d()
+    [[
+      anno::display_name("Normal Map"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform float earth_normal_map_strength = 1.0f
+    [[
+      anno::hard_range(0, 1),
+      anno::display_name("Normal Map Strength"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform texture_2d earth_roughness_map = texture_2d()
+    [[
+      anno::display_name("Roughness Map"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform float2 earth_roughness_input_range = float2(0.0f, 1.0f)
+    [[
+      anno::display_name("Roughness Input Range"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform float earth_roughness_input_gamma = 1.0f
+    [[
+      anno::display_name("Roughness Input Gamma"),
+      anno::in_group("Earth Layer")
+    ]],
+    uniform float2 earth_roughness_output_range = float2(0.0f, 1.0f)
+    [[
+      anno::display_name("Roughness Output Range"),
+      anno::in_group("Earth Layer")
+    ]],
+
+    // =========================================================================
+    // Cloud Layer
+    // =========================================================================
+    uniform bool cloud_enable = true
+    [[
+      anno::display_name("Enable"),
+      anno::in_group("Cloud Layer")
+    ]],
+    uniform texture_2d cloud_tex = texture_2d()
+    [[
+      anno::display_name("Texture"),
+      anno::in_group("Cloud Layer")
+    ]],
+    uniform bool cloud_remap_input = false
+    [[
+      anno::display_name("Remap Input"),
+      anno::in_group("Cloud Layer")
+    ]],
+    uniform bool cloud_invert_input = false
+    [[
+      anno::display_name("Invert"),
+      anno::in_group("Cloud Layer", "Remap Input"),
+      anno::enable_if("cloud_remap_input")
+    ]],
+    uniform float cloud_min = 0.0f
+    [[
+      anno::display_name("Remap Min"),
+      anno::in_group("Cloud Layer", "Remap Input"),
+      anno::enable_if("cloud_remap_input")
+
+    ]],
+    uniform float cloud_max = 1.0f
+    [[
+      anno::display_name("Remap Max"),
+      anno::in_group("Cloud Layer", "Remap Input"),
+      anno::enable_if("cloud_remap_input")
+    ]],
+    uniform float cloud_gamma = 1.0f
+    [[
+      anno::display_name("Remap Gamma"),
+      anno::in_group("Cloud Layer", "Remap Input"),
+      anno::enable_if("cloud_remap_input"),
+      anno::soft_range(0.0f, 20.0f)
+    ]],
+    uniform bool cloud_remap_output = false
+    [[
+      anno::display_name("Remap Output"),
+      anno::in_group("Cloud Layer")
+    ]],
+    uniform color cloud_color_low = color(0.0f)
+    [[
+      anno::display_name("Low Color"),
+      anno::in_group("Cloud Layer", "Remap Output"),
+      anno::enable_if("cloud_remap_output")
+    ]],
+    uniform color cloud_color_mid = color(0.5f)
+    [[
+      anno::display_name("Mid Color"),
+      anno::in_group("Cloud Layer", "Remap Output"),
+      anno::enable_if("cloud_remap_output")
+    ]],
+    uniform color cloud_color_high = color(1.0f)
+    [[
+      anno::display_name("High Color"),
+      anno::in_group("Cloud Layer", "Remap Output"),
+      anno::enable_if("cloud_remap_output")
+    ]],
+
+    // =========================================================================
+    // Emission Layer
+    // =========================================================================
+    uniform bool emission_enable = false
+    [[
+      anno::display_name("Enable"),
+      anno::in_group("Emission Layer")
+    ]],
+    uniform texture_2d emission_tex = texture_2d()
+    [[
+      anno::display_name("Texture"),
+      anno::in_group("Emission Layer")
+    ]],
+    uniform float emission_intensity = 10000.0f
+    [[
+      anno::display_name("Intensity"),
+      anno::in_group("Emission Layer")
+    ]],
+    uniform bool emission_remap_input = false
+    [[
+      anno::display_name("Remap Input"),
+      anno::in_group("Emission Layer")
+    ]],
+    uniform bool emission_invert_input = false
+    [[
+      anno::display_name("Invert"),
+      anno::in_group("Emission Layer", "Remap Input"),
+      anno::enable_if("emission_remap_input")
+    ]],
+    uniform float emission_min = 0.0f
+    [[
+      anno::display_name("Remap Min"),
+      anno::in_group("Emission Layer", "Remap Input"),
+      anno::enable_if("emission_remap_input")
+
+    ]],
+    uniform float emission_max = 1.0f
+    [[
+      anno::display_name("Remap Max"),
+      anno::in_group("Emission Layer", "Remap Input"),
+      anno::enable_if("emission_remap_input")
+    ]],
+    uniform float emission_gamma = 1.0f
+    [[
+      anno::display_name("Remap Gamma"),
+      anno::in_group("Emission Layer", "Remap Input"),
+      anno::enable_if("emission_remap_input"),
+      anno::soft_range(0.0f, 20.0f)
+    ]],
+    uniform bool emission_remap_output = false
+    [[
+      anno::display_name("Remap Output"),
+      anno::in_group("Emission Layer")
+    ]],
+    uniform color emission_color_low = color(0.0f)
+    [[
+      anno::display_name("Low Color"),
+      anno::in_group("Emission Layer", "Remap Output"),
+      anno::enable_if("emission_remap_output")
+    ]],
+    uniform color emission_color_mid = color(0.5f)
+    [[
+      anno::display_name("Mid Color"),
+      anno::in_group("Emission Layer", "Remap Output"),
+      anno::enable_if("emission_remap_output")
+    ]],
+    uniform color emission_color_high = color(1.0f)
+    [[
+      anno::display_name("High Color"),
+      anno::in_group("Emission Layer", "Remap Output"),
+      anno::enable_if("emission_remap_output")
+    ]],
+
+    uniform bool use_spherical_uvs = true
+)
+ =
+    let {
+      // =======================================================================
+      // UV & Tangent Space Setup
+      // =======================================================================
+      float3 sphere_pos = math::normalize(::state::transform_point(::state::coordinate_internal, state::coordinate_object, state::position()));
+      float3 cloud_pos = sphere_pos;//rotate_vector(sphere_pos, cloud_rotation);
+      float3 uvs = state::texture_coordinate(0);
+      float2 earth_uv = (use_spherical_uvs) ? float2(::math::atan2(-sphere_pos.z, sphere_pos.x)/(2.0f*::math::PI), 1.0f-::math::acos(sphere_pos.y)/::math::PI) : float2(uvs[0],uvs[1]);
+      float2 cloud_uv = (use_spherical_uvs) ? float2(::math::atan2(-cloud_pos.z, cloud_pos.x)/(2.0f*::math::PI), math::acos(cloud_pos.y)/::math::PI) : float2(uvs[0],uvs[1]);
+
+      float3 earth_tangent_u = math::normalize(::math::cross(state::transform_vector(::state::coordinate_object, state::coordinate_internal, float3(0.0f, 1.0f, 0.0f)), state::normal()));
+      float3 earth_tangent_v = math::normalize(::math::cross(earth_tangent_u, state::normal()));
+
+      // =======================================================================
+      // Earth Layer
+      // =======================================================================
+      color earth_tex_color = tex::lookup_color(earth_tex, earth_uv, tex::wrap_repeat, tex::wrap_clip);
+      color earth_color = math::lerp(earth_tex_color, color(::math::luminance(earth_tex_color)), earth_desaturation);
+      float earth_roughness_map_lookup = tex::lookup_float(earth_roughness_map, earth_uv, tex::wrap_repeat, tex::wrap_clip);
+      float earth_roughness = math::max(0.0f, math::lerp(earth_roughness_output_range.x, earth_roughness_output_range.y, math::pow((earth_roughness_map_lookup-earth_roughness_input_range.x)/(earth_roughness_input_range.y - earth_roughness_input_range.x), earth_roughness_input_gamma)));
+      float3 earth_normal_map_lookup = 2.0f*(::tex::lookup_color(earth_normal_map, earth_uv, tex::wrap_repeat, tex::wrap_clip)-0.5f);
+
+      Layer base_layer(
+          diffuse_color: earth_color,
+          specular_weight: 1.0f,
+          specular_rougness: earth_roughness,
+          normal: earth_normal_map_lookup,
+          alpha: earth_enable ? 1.0f : 0.0f);
+
+      // =======================================================================
+      // Cloud Layer
+      // =======================================================================
+      float cloud_tex_lookup = tex::lookup_float(cloud_tex, cloud_uv, tex::wrap_repeat, tex::wrap_clip);
+      float cloud_tex_remap = (cloud_remap_input) ? math::saturate((cloud_tex_lookup - cloud_min) / (cloud_max - cloud_min)) : cloud_tex_lookup;
+      float cloud_tex_float = cloud_invert_input ? math::pow(1.0f-cloud_tex_remap, cloud_gamma) : math::pow(cloud_tex_remap, cloud_gamma);
+      //float cloud_tex_float = tex::lookup_float(cloud_tex, cloud_uv);
+      float cloud_coverage = cloud_tex_float;
+      color cloud_color = (cloud_remap_output) ? (cloud_coverage < 0.5f) ? math::lerp(cloud_color_low, cloud_color_mid, 2.0f*cloud_coverage) : math::lerp(cloud_color_mid, cloud_color_high, 2.0f*(cloud_coverage-0.5f)) : color(cloud_coverage);
+
+      Layer cloud_layer(
+          diffuse_color: cloud_color,
+          alpha: cloud_enable ? cloud_coverage : 0.0f);
+
+      // =======================================================================
+      // Emission Layer
+      // =======================================================================
+      float emission_tex_lookup = tex::lookup_float(emission_tex, cloud_uv, tex::wrap_repeat, tex::wrap_clip);
+      float emission_tex_remap = (emission_remap_input) ? math::saturate((emission_tex_lookup - emission_min) / (emission_max - emission_min)) : emission_tex_lookup;
+      float emission_tex_float = emission_invert_input ? math::pow(1.0f-emission_tex_remap, emission_gamma) : math::pow(emission_tex_remap, emission_gamma);
+      //float emission_tex_float = tex::lookup_float(emission_tex, emission_uv);
+      float emission_coverage = emission_tex_float;
+      float3 emission_color = (emission_remap_output) ? (emission_coverage < 0.5f) ? math::lerp(emission_color_low, emission_color_mid, 2.0f*emission_coverage) : math::lerp(emission_color_mid, emission_color_high, 2.0f*(emission_coverage-0.5f)) : color(emission_coverage);
+
+      Layer emission_layer(
+          emission: (emission_enable) ? emission_color*emission_intensity : float3(0));
+
+      Layer out_layer = combine_layers(Layer[](base_layer, cloud_layer, emission_layer));
+
+      // =======================================================================
+      // Normal Map Setup
+      // =======================================================================
+      float3 shading_normal = math::normalize(
+          earth_tangent_u * out_layer.normal.x +
+          earth_tangent_v * out_layer.normal.y +
+          state::normal() * out_layer.normal.z);
+      material_geometry geometry(
+          normal: math::lerp(state::normal(),
+            shading_normal,
+            tex::texture_isvalid(earth_normal_map) ? earth_normal_map_strength : 0.0f),
+          cutout_opacity: (out_layer.alpha > 1.0f-1e-7f ? 1.0f : out_layer.alpha));
+
+
+      bsdf diffuse_bsdf = df::diffuse_reflection_bsdf(out_layer.diffuse_color);
+      bsdf specular_bsdf = df::microfacet_beckmann_smith_bsdf(out_layer.specular_rougness);
+
+      bsdf surface_bsdf = df::fresnel_layer(
+          ior: 1.33f,
+          weight: out_layer.specular_weight,
+          layer: specular_bsdf,
+          base: diffuse_bsdf
+          );
+      material_surface surface(
+          surface_bsdf,
+          material_emission(emission: df::diffuse_edf(), intensity: color(out_layer.emission)));
+
+} in material
+(
+	surface: surface,
+  geometry: geometry,
+  ior: color(1)
+);

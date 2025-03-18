@@ -1,0 +1,15 @@
+{
+    "Conventions": "CF-1.7",
+    "GRIB_centre": "kwbc",
+    "GRIB_centreDescription": "US National Weather Service - NCEP ",
+    "GRIB_edition": 2,
+    "GRIB_subCentre": 0,
+    "coordinates": "gribfile_projection",
+    "description": "Global Forecast System",
+    "institution": "US National Weather Service - NCEP ",
+    "local_grib": "C:\\Users\\cangerer\\data\\gfs\\20220918\\subset_52b24824__gfs.t00z.pgrb2.0p25.f006",
+    "model": "gfs",
+    "product": "pgrb2.0p25",
+    "remote_grib": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20220918/00/atmos/gfs.t00z.pgrb2.0p25.f006",
+    "search": ":TMP:2 m above"
+}

@@ -1,0 +1,67 @@
+{{- if .Values.nim.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-nim"
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "earth2.selectors" . | nindent 6 }}
+      app.kubernetes.io/component: nim
+  template:
+    metadata:
+      labels:
+        {{- include "earth2.labels" . | nindent 8 }}
+        app.kubernetes.io/component: nim
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.ngcImagePullSecretName }}
+      containers:
+      - name: nim
+        image: {{ .Values.image.nim.repository }}:{{ .Values.image.nim.tag }}
+        imagePullPolicy: {{ .Values.image.nim.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            source /scripts/parse-nvcf-secrets.sh || true && \
+            exec python3 /opt/start_server.py
+        args: []
+        ports:
+          - name: inference
+            containerPort: {{ .Values.service.nim.port }}
+        volumeMounts:
+          - mountPath: /dev/shm
+            name: dshm
+          - name: parse-secrets-script
+            mountPath: /scripts
+        env:
+          - name: NIM_HTTP_API_PORT
+            value: {{ .Values.service.nim.port | quote }}
+          {{- if .Values.nim.overrideNgcAPIKey }}
+          - name: NGC_API_KEY
+            value: {{ .Values.nim.overrideNgcAPIKey | quote }}
+          {{- else }}
+          - name: NGC_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ngc-catalog-secret
+                key: api-key
+                optional: true
+          {{- end }}
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.nim.shmSize }}
+        - name: parse-secrets-script
+          configMap:
+            name: {{ .Release.Name }}-parse-nvcf-secrets
+            defaultMode: 0755
+{{- end }}

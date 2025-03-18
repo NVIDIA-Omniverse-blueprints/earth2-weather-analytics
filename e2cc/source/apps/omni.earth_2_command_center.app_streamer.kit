@@ -1,0 +1,202 @@
+[package]
+title = "Earth-2 Command Center Streamer"
+description = """The Earth-2 Command Center allows the visualization of global and large-scale geospatial datasets, including climate data. Using the Data Federation Service, it's possible to launch simulations, query inference servers and pull remote datasets."""
+version = "2025.1.0"
+
+# That makes it browsable in UI with "experience" filter
+keywords = ["app"]
+
+[dependencies]
+# Create Kit UI Based applications
+"omni.kit.uiapp" = {}
+"omni.kit.window.extensions" = {}
+"omni.kit.window.script_editor" = {}
+"omni.kit.renderer.core" = {}
+
+# This is your application setup Extensions
+# Where you layout the various Window, arrange you menu etc
+# order = 1000 make it run last
+"omni.earth_2_command_center.app.setup" = { order = 1000 }
+"omni.earth_2_command_center.app.resources" = {}
+"omni.earth_2_command_center.app.core" = {}
+"omni.earth_2_command_center.app.shading" = {}
+"omni.earth_2_command_center.app.window.feature_properties" = {}
+"omni.earth_2_command_center.app.index" = {}
+"omni.earth_2_command_center.app.continents_outline" = {order = 3000}
+"omni.earth_2_command_center.app.test_sequence" = {}
+"omni.earth_2_command_center.app.globe_view" = {}
+"omni.earth_2_command_center.app.dfm" = {order = 3500}
+"omni.earth_2_command_center.app.blueprint" = {order = 4000}
+# Live streaming for WebRTC, must be loaded before blueprint
+"omni.kit.livestream.webrtc" = {order = 2000}
+
+# Viewport Extensions
+#############################################
+# The Main Viewport Window
+# "omni.earth_2_command_center.app.globe_view" = {}
+
+# Enable RTX Renderer for your viewport
+"omni.hydra.rtx" = {}
+# This is a temporary workaround: https://omniverse-jirasw.nvidia.com/browse/OM-114219
+"omni.rtx.shadercache.vulkan" = {order = -1000}
+
+# show when the RTX engine finished loading
+"omni.kit.viewport.ready" = {}
+
+[settings.app.window]
+title = "Earth-2 Command Center Streamer"
+fullscreen = false
+
+# Width and Height of your Main Window at startup
+width = 1280
+height = 780
+# start with a centered window
+x = -1
+y = -1
+
+# carb seems to expect some windows-specific format, not a png. Disabling to get rid of the error message.
+iconPath = "${omni.earth_2_command_center.app.resources}/data/icon.png"
+
+# this is a custom setting used in our app setup to choose the Layout
+[settings.app.layout]
+name = "basic"
+
+[settings]
+# Basic Kit App
+################################
+# this is used in our setup file to display some Version to the user in the title bar
+app.titleVersion = "1.0.0"
+
+# Turn on VSync by default
+app.vsync = true
+
+# this will create a stage during the statup process
+app.content.emptyStageOnStart = false
+
+# Name the Viewport
+exts."omni.kit.viewport.window".startup.windowName = "Globe View"
+exts."omni.kit.viewport.window".startup.dockTabInvisible = true
+
+# Main Menu Bar Visibility
+app.mainMenuBar.visible = false
+# Visibility of Globe View UI Elements
+exts."omni.earth_2_command_center.app.globe_view".feature.visible = true
+exts."omni.earth_2_command_center.app.globe_view".timeline.visible = true
+exts."omni.earth_2_command_center.app.globe_view".navigation.visible = true
+
+# path tracer currently slow in changing frames
+app.viewport.grid.enabled = false
+app.viewport.fillViewport = true
+#app.viewport.resolution = [0,0]
+# NOTE: have to use the legacy setting as else the movie capture can't set the resolution correctly
+app.renderer.resolution = [0,0]
+
+app.viewport.defaults.hud.renderFPS.visible = false
+app.viewport.defaults.hud.deviceMemory.visible = false
+app.viewport.defaults.hud.hostMemory.visible = false
+app.viewport.defaults.hud.renderProgress.visible = false
+app.viewport.defaults.hud.renderResolution.visible = false
+app.viewport.defaults.hud.cameraSpeed.visible = false
+app.viewport.defaults.hud.toastMessage.visible = false
+
+# Skip long full shutdown and exit quickly
+app.fastShutdown = true
+
+# here you can choose what renderer are enabled
+renderer.enabled = "rtx"
+
+# Turn off mGPU to avoid cras
+renderer.multiGpu.enabled = false
+
+# Turn off MDL Distilling (https://jirasw.nvidia.com/browse/EAR-341)
+persistent.rtx.mdltranslator.mdlDistilling = false
+
+# Turn on RTPT for testing
+#persistent.renderer.rtpt.enabled = true
+
+[settings.persistent.app]
+# Mute Usd Coding Errors
+# This gets logged when removing prims even when the path is fully valid
+usd.muteUsdCodingError = true
+
+viewport.camVelocityMax = 20.0
+viewport.camInertiaEnabled = true # Enabled
+viewport.manipulator.camera.tumbleAcceleration = 200
+viewport.manipulator.camera.tumbleDampening = 20
+viewport.manipulator.camera.moveAcceleration = 200
+viewport.manipulator.camera.moveDampening = 20
+viewport.camVelocityScalerMultAmount = 1.35
+
+[settings.log]
+file = ".local/app/log/kit.log"
+fileLogLevel = "info"
+channels."*" = "info"
+channels."omni.services.livestream.nvcf" = "verbose"
+channels."carb.livestream-rtc.plugin" = "verbose"
+enableStandardStreamOutput = true
+outputStreamLevel = "info"
+
+[settings.persistent.exts]
+"omni.kit.manipulator.camera".inertiaDecay = 3
+
+[settings.exts]
+# flight, tumble, look, move
+"omni.kit.manipulator.camera".inertiaModesEnabled = [0, 1, 0, 0]  # MOVE DISABLED UNTIL ZOOM CAN BE FIGURED OUT @gamato
+"omni.kit.window.viewport".showContextMenu = false
+"omni.kit.window.splash".autocreateSplash = false
+"omni.earth_2_command_center.app.globe_view".zoom_min = 5800
+
+
+# Fonts
+# You can change the font files here and also adjust its size
+# Although most ui have dynamic layout your milage may vary.linux
+# there might be few issue are too low or too high sizes
+[settings.app.font]
+file = "${fonts}/OpenSans-SemiBold.ttf"
+size = 16
+
+[settings.app.extensions]
+# TODO: Needed to work around OM-89748; remove after updating Kit!
+# Fix has been merged with af6f07dd (carbonite master).
+fastImporter.enabled = 0
+
+# Register extension folder from this repo in kit
+# Your application is using Extensions from your applications
+# Here they are setup into a single folder "exts" but you can have you own structure if you need
+# see we also dd the Extension from the Base application using their extscache
+[settings.app.exts]
+folders.'++' = ["${app}/../exts", "${app}/../extscache/"]
+
+# Set splash screen
+# those will be for showing how to write tests for your application.
+# And yes you absolutely should
+[[test]]
+args = [
+	"--/app/window/width=480",
+    "--/app/window/height=480",
+    "--/app/extensions/registryEnabled=0", # Make sure we can run without registry and everything is precached
+]
+
+
+
+########################################################################################################################
+# BEGIN GENERATED PART (Remove from 'BEGIN' to 'END' to regenerate)
+########################################################################################################################
+
+# Kit SDK Version: 106.5.0+release.162521.d02c707b.gl
+
+# Version lock for all dependencies:
+[settings.app.exts]
+enabled = [
+	"hpcvis.dynamictexture-0.4.1",
+	"omni.kit.livestream.core-6.1.0",
+	"omni.kit.livestream.messaging-1.1.1",
+	"omni.kit.livestream.webrtc-6.0.0",
+	"omni.kit.streamsdk.plugins-6.2.2",
+	"omni.kit.widgets.custom-1.0.10",
+	"omni.kit.window.section-107.0.3",
+]
+
+########################################################################################################################
+# END GENERATED PART
+########################################################################################################################

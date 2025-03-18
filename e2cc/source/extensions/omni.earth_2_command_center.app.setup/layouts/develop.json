@@ -1,0 +1,165 @@
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "dock_id": 7,
+                "dock_tab_bar_enabled": true,
+                "dock_tab_bar_visible": true,
+                "height": 619.0,
+                "position_x": 0.0,
+                "position_y": 24.0,
+                "selected_in_dock": true,
+                "title": "Feature Properties",
+                "visible": true,
+                "width": 598.0
+              }
+            ],
+            "dock_id": 7,
+            "position": "TOP"
+          },
+          {
+            "children": [
+              {
+                "dock_id": 8,
+                "dock_tab_bar_enabled": true,
+                "dock_tab_bar_visible": true,
+                "height": 601.0,
+                "position_x": 0.0,
+                "position_y": 645.0,
+                "selected_in_dock": true,
+                "title": "Material Graph",
+                "visible": true,
+                "width": 598.0
+              }
+            ],
+            "dock_id": 8,
+            "position": "BOTTOM"
+          }
+        ],
+        "dock_id": 1,
+        "position": "LEFT"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "dock_id": 3,
+                "dock_tab_bar_enabled": true,
+                "dock_tab_bar_visible": false,
+                "height": 1222.0,
+                "position_x": 600.0,
+                "position_y": 24.0,
+                "selected_in_dock": true,
+                "title": "Globe View",
+                "visible": true,
+                "width": 1017.0
+              }
+            ],
+            "dock_id": 3,
+            "position": "LEFT"
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "dock_id": 5,
+                    "dock_tab_bar_enabled": true,
+                    "dock_tab_bar_visible": true,
+                    "height": 611.0,
+                    "position_x": 1619.0,
+                    "position_y": 24.0,
+                    "selected_in_dock": true,
+                    "title": "Stage",
+                    "visible": true,
+                    "width": 433.0
+                  }
+                ],
+                "dock_id": 5,
+                "position": "TOP"
+              },
+              {
+                "children": [
+                  {
+                    "dock_id": 6,
+                    "dock_tab_bar_enabled": true,
+                    "dock_tab_bar_visible": true,
+                    "height": 609.0,
+                    "position_x": 1619.0,
+                    "position_y": 637.0,
+                    "selected_in_dock": true,
+                    "title": "Property",
+                    "visible": true,
+                    "width": 433.0
+                  }
+                ],
+                "dock_id": 6,
+                "position": "BOTTOM"
+              }
+            ],
+            "dock_id": 4,
+            "position": "RIGHT"
+          }
+        ],
+        "dock_id": 2,
+        "position": "RIGHT"
+      }
+    ],
+    "dock_id": 3358485147
+  },
+  {
+    "dock_id": 0,
+    "height": 150.0,
+    "position_x": 60.0,
+    "position_y": 60.0,
+    "selected_in_dock": false,
+    "title": "VS Code Link",
+    "visible": false,
+    "width": 300.0
+  },
+  {
+    "dock_id": 0,
+    "height": 600.0,
+    "position_x": 60.0,
+    "position_y": 60.0,
+    "selected_in_dock": false,
+    "title": "Content",
+    "visible": false,
+    "width": 1000.0
+  },
+  {
+    "dock_id": 0,
+    "height": 600.0,
+    "position_x": 60.0,
+    "position_y": 60.0,
+    "selected_in_dock": false,
+    "title": "Render Settings",
+    "visible": false,
+    "width": 600.0
+  },
+  {
+    "dock_id": 0,
+    "height": 600.0,
+    "position_x": 3.4028234663852886e+38,
+    "position_y": 3.4028234663852886e+38,
+    "selected_in_dock": false,
+    "title": "Add Attribute...",
+    "visible": false,
+    "width": 400.0
+  },
+  {
+    "dock_id": 0,
+    "height": 260.0,
+    "position_x": 577.0,
+    "position_y": 355.0,
+    "selected_in_dock": false,
+    "title": "0",
+    "visible": false,
+    "width": 723.0
+  }
+]

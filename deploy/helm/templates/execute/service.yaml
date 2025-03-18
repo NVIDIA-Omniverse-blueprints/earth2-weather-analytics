@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-execute
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "earth2.selectors" . | nindent 4 }}
+    app.kubernetes.io/component: execute
+  ports:
+    - port: {{ .Values.service.execute.port }}
+      targetPort: http-execute
+      protocol: TCP
+      name: http-execute
+  type: {{ .Values.service.execute.type }}
+  clusterIP: None

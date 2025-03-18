@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-process
+  labels:
+    {{- include "earth2.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "earth2.selectors" . | nindent 4 }}
+    app.kubernetes.io/component: process
+  ports:
+  - port: {{ .Values.service.process.port }}
+    targetPort: http-process
+    protocol: TCP
+    name: http-process
+  type: {{ .Values.service.process.type }}
+  clusterIP: None # TODO: Should this be headless or not?
