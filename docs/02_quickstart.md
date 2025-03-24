@@ -1,7 +1,7 @@
 # Earth-2 Weather Analytics Blueprint - Quickstart
 
 You will use this quickstart guide to build and deploy the Earth-2 Weather Analytics
-blueprint on MicroK8s and run the Earth-2 Command Center application in desktop mode.
+blueprint on MicroK8s and run the application in desktop mode.
 In subsequent [sections](./03_microk8s_deployment.md), the deployment process and
 relevant options will be covered in detail.
 
@@ -65,7 +65,7 @@ To quickly deploy the Omniverse application in a new console:
 
 This script will:
 
-1. Build the Earth-2 Command Center application
+1. Build the Earth-2 Weather Analytics application
 1. Launch the application in the specified mode
 
 The script supports the following options:
@@ -78,17 +78,17 @@ The script supports the following options:
 
 > [!WARNING]
 > Watching the console logs is invaluable for Kit applications. You should
-> keep the console visible while using E2CC to understand underlying processes.
+> keep the console visible while using Earth-2 Weather Analytics application to understand underlying processes.
 > Upon initial launch the application will take several minutes to load while it
 > compiles the necessary shaders. This is normal, monitor the console logs to confirm
 > startup is running.
 
-On success, this will open up the Earth-2 Command Center application with an
+On success, this will open up the Earth-2 Weather Analytics application with an
 interactive globe showing the blue marble base layer.
 
 ## Using the Weather Analytics Blueprint
 
-Inside the Earth-2 Command Center application, using the data window in the top left
+Inside the Earth-2 Weather Analytics application, using the data window in the top left
 corner, use the default settings to fetch wind speed data from the Global Forecast
 System (GFS) model by clicking the **Fetch Weather Data** button:
 
