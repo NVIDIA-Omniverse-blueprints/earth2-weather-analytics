@@ -16,8 +16,8 @@ name = "earth-2-control-center"
 [repo_precache_exts]
 # Apps to run and precache
 apps = [
-    "${root}/source/apps/omni.earth_2_command_center.app_streamer.kit",
-    "${root}/source/apps/omni.earth_2_command_center.app_nvcf.kit",
+    # "${root}/source/apps/omni.earth_2_command_center.app_streamer.kit",
+    # "${root}/source/apps/omni.earth_2_command_center.app_nvcf.kit",
     "${root}/source/apps/omni.earth_2_command_center.app_desktop.kit",
 ]
 

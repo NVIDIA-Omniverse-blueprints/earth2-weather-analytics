@@ -95,9 +95,9 @@ fi
 # Build the application
 echo "Building application..."
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-    ./e2cc/build.bat --release
+    ./e2cc/build.bat --release --no-docker
 else
-    ./e2cc/build.sh --release
+    ./e2cc/build.sh --release --no-docker
 fi
 
 # Check if build was successful

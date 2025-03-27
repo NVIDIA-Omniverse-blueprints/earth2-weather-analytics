@@ -23,9 +23,9 @@
   <!-- <dependency name="repo_licensing" linkPath="../_repo/deps/repo_licensing">
     <package name="repo_licensing" version="1.15.13" />
   </dependency> -->
-  <dependency name="repo_services_tools" linkPath="../_repo/deps/repo_services_tools">
+  <!-- <dependency name="repo_services_tools" linkPath="../_repo/deps/repo_services_tools">
     <package name="repo_services_tools" version="1.6.6" />
-  </dependency>
+  </dependency> -->
   <dependency name="repo_ci" linkPath="../_repo/deps/repo_ci">
     <package name="repo_ci" version="0.8.5" />
   </dependency>
