@@ -78,7 +78,8 @@ The script supports the following options:
 
 > [!WARNING]
 > Watching the console logs is invaluable for Kit applications. You should
-> keep the console visible while using Earth-2 Weather Analytics application to understand underlying processes.
+> keep the console visible while using Earth-2 Weather Analytics application to
+> understand underlying processes.
 > Upon initial launch the application will take several minutes to load while it
 > compiles the necessary shaders. This is normal, monitor the console logs to confirm
 > startup is running.
