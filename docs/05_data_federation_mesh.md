@@ -155,6 +155,14 @@ For example: `LoadModelData(provider='s3_buckets', ...)` and
 `LoadModelData(provider='postgres_db', ...)`.
 These can be interpreted as `my_site.s3_buckets.LoadModelData(...)` and `my_site.postgres_db.LoadModelData(...)`.
 
+#### Developing a custom adapter
+The current version of the blueprint provides a couple of templates xxxx (links to the source code) to enable a developer to create a custom adapter. You will need the following to start:
+* xxx
+* xxx
+Here are the steps to follow:
+* Get DFM running
+* Use one of the existing templates to do xxx
+
 <!-- Footer Navigation -->
 ---
 <div align="center">
