@@ -153,6 +153,7 @@ The blueprint has xxx
 The current version of the blueprint provides a couple of templates xxxx (links to the source code) to enable a developer to create a custom adapter. You will need the following to start:
 * xxx
 * xxx
+  
 Here are the steps to follow:
 * Get DFM running
 * Use one of the existing templates to do xxx
