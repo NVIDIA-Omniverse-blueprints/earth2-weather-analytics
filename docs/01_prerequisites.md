@@ -1,8 +1,7 @@
 # Earth-2 Weather Analytics Blueprint - Prerequisites
 
 This document outlines the prerequisites for the Earth-2 Weather Analytics Blueprint.
-The Earth-2 Weather Analytics Blueprint consists of several components that you can
-select to deploy individually.
+The Earth-2 Weather Analytics Blueprint configures several components to serve as a reference implementation. This includes the Omniverse kit application, instance of DFM, an AI inference pipeline using a NIM. We show how these can be composed to work together so a developer can chose the relevant components and deploy them individually. 
 The precise requirements depend on the final deployment configuration.
 
 ## Software
