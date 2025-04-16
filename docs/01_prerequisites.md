@@ -16,7 +16,7 @@ The following software is required for deployment and development of the bluepri
   minimum version: 1.13.5
 - [MicroKubernetes](https://microk8s.io/) - minimum version: 1.29.13
 
-For Earth-2 Command Center requirements, refer to the
+For the Omniverse Kit application, refer to the
 [Omniverse Kit requirements documentation](https://docs.omniverse.nvidia.com/embedded-web-viewer/latest/common/technical-requirements.html).
 
 For FourCastNet NIM requirements, refer to the
@@ -172,12 +172,12 @@ to the helm charts will be required.
 Since you may only be interested in certain components, individual hardware
 requirements are listed below for each.
 
-### Earth-2 Command Center
+### Earth-2 OV Kit Application
 
-Earth-2 Command Center requires an RTX-capable GPU. Use cards with larger memory
+Earth-2 OV Kit application requires an RTX-capable GPU. Use cards with larger memory
 (RTX6000 or L40) for optimal performance.
 
-#### E2CC Recommended Requirements
+#### Recommended Requirements
 
 - GPUs: L40, L40S, RTX6000
 - CPU: 16 cores
@@ -189,11 +189,11 @@ for more information.
 
 ### Data Federation Mesh
 
-The service glue code, referred to as Data Federation Mesh (DFM), consists of a series of
+The Data Federation Mesh (DFM) implementation, consists of a series of
 containers that provide data processing and caching capabilities to the blueprint.
 The recommended hardware requirements for Data Federation Mesh are:
 
-#### DFM Recommended Requirements
+#### Recommended Requirements
 
 - CPU: 4 cores
 - RAM: 16GB
