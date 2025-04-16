@@ -1,9 +1,11 @@
 # Earth-2 Weather Analytics Blueprint - DFM
 
+The Earth-2 Weather Analytics Omniverse blueprint uses Data Federation Mesh or DFM for reference implementation for processing, scheduling and executing the pipelines that create the data that is used by the kit application for the visualization.
+
 ## Data Federation Mesh
 
-*Data Federation Mesh* (*DFM*) is reference implementation showcasing a distributed and
-programmable framework for managing and orchestrating various microservices used by the Earth-2 blueprint.
+*Data Federation Mesh* (*DFM*) is a distributed and
+programmable framework for managing and orchestrating various microservices as illustrated by the Earth-2 blueprint.
 
 It provides an additional layer of distributed control, helping you to execute
 programmable pipelines in the cloud.
@@ -143,6 +145,9 @@ accessing different backends or utilizing different protocols), the DFM solution
 For example: `LoadModelData(provider='s3_buckets', ...)` and
 `LoadModelData(provider='postgres_db', ...)`.
 These can be interpreted as `my_site.s3_buckets.LoadModelData(...)` and `my_site.postgres_db.LoadModelData(...)`.
+
+## Data Federation Mesh for Earth-2
+The blueprint has xxx
 
 #### Developing a custom adapter
 The current version of the blueprint provides a couple of templates xxxx (links to the source code) to enable a developer to create a custom adapter. You will need the following to start:
