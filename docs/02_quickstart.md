@@ -55,7 +55,7 @@ kubectl get pods -n earth2
 >>> earth2-weather-analytics-scheduler-8887b8b55-2srgz   1/1     Running   0         1m
 ```
 
-## Building and Launching the Earth-2 Command Center Application
+## Building and Launching the Omniverse Kit Application
 
 To quickly deploy the Omniverse application in a new console:
 
