@@ -1,32 +1,22 @@
 # Earth-2 Weather Analytics Blueprint - Workflow Overview
 
-Learn about the Earth-2 Weather Analytics Blueprint desktop and streaming workflows.
-
-> [!IMPORTANT]
-> For full reproducibility, this blueprint requires an [NVIDIA AI Enterprise](https://www.nvidia.com/en-us/ai/)
-> license, but most parts can be deployed without one.
-> You should adjust your deployment accordingly.
-> An NVIDIA AI Enterprise license is required for the following features:
->
-> - FourCastNet NIM
-> - Omniverse Streaming Container
+Learn about the different modes of Earth-2 Weather Analytics Blueprint workflows. The desktop workflow is for developing the application locally and can also be used for deployment as desktop applications. The streaming workflow is for deployment in a client server fashion where you can leverage GPUs to render on the server and stream the pixels to the client broswer based application.
 
 ## Desktop Workflow
 
-The desktop workflow serves as the primary deployment method for this blueprint.
-In this workflow, both the data federation service and FourCastNet NIM are deployed
-using Kubernetes to fetch weather data from different data stores and generate
-AI-powered weather forecasts.
+The desktop workflow is the primary deployment method for this blueprint to enable developers to locally deploy and customize the application.
+In this workflow, the underlying microservices and modules such as the data federation mesh (DFM) and FourCastNet NIM are deployed locally
+using Kubernetes.
 
 The desktop environment features an *Omniverse Kit* application bundled with
-*Earth-2 Command Center* extensions, providing users with an interactive globe
+*extensions*, providing users with an interactive globe as an 
 interface for weather analytics and visualization.
 
 When you interact with the Omniverse Kit application, it communicates your requests
-to the running data federation service.
-Upon receiving a request, the service executes the corresponding data pipeline and saves
+to the running DFM instance.
+Upon receiving a request, the DFM instance executes the corresponding data pipeline and saves
 the resulting textures to a shared cache location.
-This shared cache enables seamless communication between the data federation service and
+This shared cache enables seamless communication between the data federation mesh and
 the Omniverse Kit application.
 The Omniverse Kit application can then access these cached textures and render them
 directly onto the interactive globe, creating a fluid visualization experience.
