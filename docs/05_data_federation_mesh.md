@@ -14,11 +14,9 @@ or data movement.
 Instead, it focuses on integrating individual components, ensuring they work together
 seamlessly, and introducing dynamic behavior into the system.
 
-DFM addresses the following points:
+DFM is being designed to address the following points:
 
-- Clients send programmable pipelines, expressed as graphs represented in JSON, to the
-    DFM. The DFM platform functions as a distributed virtual machine that executes
-    client requests.
+- Framework to execute requests from clients that send programmable pipelines, expressed as graphs represented in JSON,as a distributed virtual machine.    
     Unlike traditional virtual machines, such as Java’s, the DFM is a virtual machine
     composed of distributed cloud services operating on top of heavy-duty external
     services.
@@ -147,16 +145,23 @@ For example: `LoadModelData(provider='s3_buckets', ...)` and
 These can be interpreted as `my_site.s3_buckets.LoadModelData(...)` and `my_site.postgres_db.LoadModelData(...)`.
 
 ## Data Federation Mesh for Earth-2
-The blueprint has xxx
+The blueprint has an instance of DFM with static pipelines created by various clients like the OV Kit app, the inference NIM, the adapters for ESRI, GFS. 
 
 #### Developing a custom adapter
-The current version of the blueprint provides a couple of templates xxxx (links to the source code) to enable a developer to create a custom adapter. You will need the following to start:
-* xxx
-* xxx
+The current version of the blueprint provides a couple of templates xxxx (links to the source code) to enable a developer to create a custom adapter. 
+* Three components :
+* Create the pipeline code of the adapter - lives under the services folder (https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/service/execute/adapter/esri)
+* Define corresponding API Spec (in the API folder)
+* Configuration for the developer (https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/config/adapter/esri)
+
+You will need the following to start:
+* DFM communicates via XArray - need to bring their own python based pipeline to convert to XArray
+  
   
 Here are the steps to follow:
 * Get DFM running
 * Use one of the existing templates to do xxx
+* Tests (http://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/tests/dfm/test_dfm_service_execute_adapter_load_elevation_data.py)
 
 <!-- Footer Navigation -->
 ---
