@@ -2,20 +2,9 @@
 
 ## Data Federation Mesh
 
-*Data Federation Mesh* (*DFM*) is a set of services that provides a distributed and
-programmable framework for managing and orchestrating various microservices.
+*Data Federation Mesh* (*DFM*) is reference implementation showcasing a distributed and
+programmable framework for managing and orchestrating various microservices used by the Earth-2 blueprint.
 
-DFM aims to provide an alternative approach for implementing use cases that do not fit
-within a traditional microservice architecture.
-However, **it is crucial to emphasize that DFM is not intended to replace**
-**microservices but rather to serve as a complementary addition.**
-Microservices should be used whenever the task and application allow, but this is not
-always feasible. In such cases, alternative solutions should be considered—for example,
-in scripted pipelines you may use batch processing, or the execution of frameworks such
-as Hadoop, or NVIDIA HoloScan.
-
-DFM positions itself as a “Glue Code as a Service” architecture that operates on top of
-diverse external services.
 It provides an additional layer of distributed control, helping you to execute
 programmable pipelines in the cloud.
 As glue code, DFM generally does not perform any “heavy lifting,” such as computations
