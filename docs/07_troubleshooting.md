@@ -73,14 +73,14 @@ sudo snap remove microk8s --purge
 sudo snap install microk8s --classic
 ```
 
-## Earth-2 Command Center
+## Earth-2 Kit Application
 
-E2CC provides a lot of information about what is happening in the console logs.
+The kit app provides a lot of information about what is happening in the console logs.
 Users are encouraged to watch the logs when unexpected behavior is observed.
 
-### My changes in E2CC are not reflected in the application
+### My changes in the kit app are not reflected in the application
 
-If you make changes to the E2CC source code and they are not reflected in the
+If you make changes to the kit app source code and they are not reflected in the
 application, you may need to perform a clean build of the application.
 
 ```bash
@@ -90,9 +90,9 @@ rm -rf e2cc/_repo
 ./build.sh --release
 ```
 
-### E2CC is consuming too much memory
+### Kit application is consuming too much memory
 
-E2CC uses the dynamic texture extension which has an in-memory cache
+The kit app uses the dynamic texture extension which has an in-memory cache
 to help to ensure smooth playback and scrubbing of long
 time sequences of two-dimensional data sets.
 If you have less than the recommended amount of host memory, you can adjust the cache
@@ -104,16 +104,16 @@ size using the command line parameter:
 
 The `dynamic_texture_cache_size` value is given in bytes.
 
-### E2CC does not properly visualize the globe on shader recompile
+### Kit application does not properly visualize the globe on shader recompile
 
 This is commonly seen if you are running an incorrect driver version.
 Please ensure you are running a driver version of 550.127.05 or one of the drivers
 explicitly supported by Omniverse.
 Newer drivers are not guaranteed to work.
 
-### E2CC pipelines immediately fail with error `Cannot connect to host localhost:8080`
+### Kit application pipelines immediately fail with error `Cannot connect to host localhost:8080`
 
-This issue is seen when the E2CC application cannot connect to the data federation
+This issue is seen when the kit application cannot connect to the data federation
 mesh service.
 The error message in the console will be:
 
@@ -141,7 +141,7 @@ export K8S_E2CC_DFM_PROCESS_HOST=127.0.0.1
 export K8S_E2CC_DFM_PROCESS_PORT=8080
 ```
 
-### E2CC submits pipelines but cannot find the produced textures
+### Kit application submits pipelines but cannot find the produced textures
 
 This common deployment issue results in an error similar to the following:
 
@@ -152,7 +152,7 @@ This common deployment issue results in an error similar to the following:
 ```
 <!-- markdownlint-enable MD013 -->
 
-This means that the texture cache location used by E2CC and DFM are not consistent.
+This means that the texture cache location used by the kit app and DFM are not consistent.
 When deploying the blueprint, this cache location is set by the volume section:
 
 ```yaml
@@ -164,25 +164,25 @@ volumes:
 ```
 
 In this example, the cache folder will be `/cache` on the host machine.
-This is the default location E2CC will look for, but one can change this by setting
+This is the default location the kit app will look for, but one can change this by setting
 the `E2CC_CACHE_PATH` environment variable before launching the application:
 
 ```bash
 export E2CC_CACHE_PATH=/cache
 ```
 
-### E2CC fetch produces `Pipeline already running!`
+### Kit application fetch produces `Pipeline already running!`
 
 This indicates that a data pipeline was previously submitted and is actively running.
-Check the console log of E2CC to see if there is a console message indicating the
+Check the console log of the kit app to see if there is a console message indicating the
 pipeline was submitted to the data federation mesh.
 Currently, the blueprint limits the number of concurrent requests to prevent
 users from downloading large amounts of data unintentionally.
 Give the job a few minutes to pull data (or potentially timeout).
-If the job remains stalled for over 10 minutes with no updates, kill E2CC and relaunch.
+If the job remains stalled for over 10 minutes with no updates, kill the kit app and relaunch.
 
 > [!NOTE]
-> While the UI and blueprint extension in E2CC limit the number of concurrent
+> While the UI and blueprint extension limit the number of concurrent
 > DFM pipelines to just one, this is imposed to protect the user initially and
 > can be removed by developers. DFM was designed to handle multiple job requests.
 
