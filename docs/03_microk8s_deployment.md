@@ -144,7 +144,7 @@ Port forward the blueprint process API:
 kubectl -n earth2 port-forward service/earth2-weather-analytics-process 8080:8080
 ```
 
-### Deploying Earth-2 Command Center Desktop Application
+### Deploying Earth-2 Omniverse Kit Application
 
 <div align="center">
 <div style="max-width: 500px;">
@@ -155,8 +155,8 @@ kubectl -n earth2 port-forward service/earth2-weather-analytics-process 8080:808
 </div>
 
 Assuming one of the previous two deployments are successful and the DFM API port is
-forwarded, Earth-2 Command Center can now be launched to use the running service.
-To configure the Earth-2 Command Center kit app with the correct cache location set the
+forwarded, the kit app can now be launched to use the running service.
+To configure the kit app with the correct cache location set the
 environment variable (update path as needed):
 
 ```bash
@@ -175,7 +175,7 @@ Next, in the E2CC repo build the E2CC application:
 The default endpoint for DFM is set to `https://localhost:8080` so running the app
 should find the forwarded DFM process on port 8080.
 
-### Deploying DFM K8s and E2CC Streaming
+### Deploying DFM K8s and kit app Streaming
 
 <div align="center">
 <div style="max-width: 550px;">
@@ -185,10 +185,10 @@ should find the forwarded DFM process on port 8080.
 </div>
 </div>
 
-The next section contains the steps for deploying both DFM and E2CC on MicroK8s and is
+The next section contains the steps for deploying both DFM and kit app on MicroK8s and is
 the most advanced deployment.
 
-Note that this means E2CC will be running in streaming mode, thus will need a streaming
+Note that this means kit app will be running in streaming mode, thus will need a streaming
 client to interact with it.
 **This streaming client is presently not included in this repository.**
 We encourage users to look at the [WebRTC Browser Client Documentation](https://docs.omniverse.nvidia.com/extensions/latest/ext_livestream/webrtc.html)

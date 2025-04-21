@@ -3,12 +3,11 @@
 The Earth-2 Weather Analytics Omniverse blueprint is a reference pipeline for a weather
 analysis and forecasting application for interactive exploration and visualization
 of terabytes of weather data coming from internal or external data archives.
-At the front-end of the blueprint is the Omniverse Kit-based app Earth-2 Command Center
-(E2CC), which serves as a sample for building similar applications.
+At the front-end of the blueprint is the Omniverse Kit-based app, which serves as a sample for building similar applications.
 
 ## User Interface Guide
 
-This section gives you an introduction to the user interface for E2CC, how to control
+This section gives you an introduction to the user interface for the kit app, how to control
 the camera and the lights, and how to add and remove features.
 
 ### Controlling the Camera
@@ -260,7 +259,7 @@ events.
 
 This section is for developers who want to understand the codebase and extend the
 application.
-E2CC follows a standard directory structure common to Omniverse Kit Applications.
+The kit app follows a standard directory structure common to Omniverse Kit Applications.
 The unique functionality of E2CC is implemented in the form of Kit extensions.
 For general questions about app and extension development, or about the directory
 structure and the build system, please consult the [Omniverse Kit documentation](https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/index.html).
@@ -306,7 +305,7 @@ e2cc/source/extensions/omni.earth_2_command_center.app.dfm
 > placed in the `e2cc/deps/wheels` directory.
 
 The pipelines for all supported sources are found inside this extension.
-E2CC should be thought of as a client application that uses DFM.
+The kit app should be thought of as a client application that uses DFM.
 In general, you'll find that they all follow the same structure of:
 
 ```python
@@ -342,7 +341,7 @@ class PipelineBase:
 
 ### The Concept of Features
 
-A core concept of E2CC is the separation of the data being visualized from
+A core concept of the kit app is the separation of the data being visualized from
 the actual visible representation.
 A particular piece of data, combined with a description of how it is to be visualized,
 is called a *feature*.
@@ -361,7 +360,7 @@ e2cc/source/extensions/omni.earth_2_command_center.app.core/omni/earth_2_command
 ```
 
 or by providing a metadata file (see below).
-The E2CC reference implementation showcases how multiple such Features are managed
+The kit app showcases how multiple such Features are managed
 simultaneously.
 
 Features describing a two-dimensional field, represented by textures, are
@@ -384,9 +383,9 @@ e2cc/source/extensions/omni.earth_2_command_center.app.example_extension
 
 ### Metadata Format
 
-E2CC can load feature descriptions from metadata stored in JSON files. The goal
+The kit app can load feature descriptions from metadata stored in JSON files. The goal
 for this representation is to make it useable for other applications outside of
-E2CC without introducing a requirement for the USD libraries. In the future, this
+the kit app without introducing a requirement for the USD libraries. In the future, this
 mechanism may be augmented by adding a USD schema.
 
 Below, you'll learn how the metadata JSON files can be structured.
@@ -638,9 +637,9 @@ Examples can be found in the Test Sequences extension:
 e2cc/source/extensions/omni.earth_2_command_center.app.test_sequence
 ```
 
-### Adding Custom Feature Types to E2CC
+### Adding Custom Feature Types
 
-The Earth-2 Command Center source tree includes an example extension that can
+The kit app source tree includes an example extension that can
 serve as a starting point for custom Feature types:
 
 ```bash
