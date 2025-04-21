@@ -153,6 +153,8 @@ The current version of the blueprint provides the following template to enable a
 * Defining the corresponding API Spec in the ([API folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/api/esri))
 * Specifying the relevant configuration in the ([Config folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/config/adapter/esri))
 
+Please refer to the sequence diagram for ([understanding the control flow](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/ram-cherukuri-patch-1/docs/06_sequence.md))
+
 You will need the following to start building your own adapter:
 * DFM communicates via XArray format. You need to write your own python based pipeline to convert data from the external source to XArray. Refer to the source code here for ([reference](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py))
   
