@@ -149,21 +149,21 @@ The blueprint implements an instance of DFM with static pipelines created by cli
 
 #### Developing a custom adapter
 The current version of the blueprint provides the following template to enable a developer to create a custom adapter for any external data source. It requires the following three components:
-* Creating the pipeline for DFM to execute - Refer to the reference ([source code here](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/service/execute/adapter/esri))
-* Defining the corresponding API Spec in the ([API folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/api/esri))
-* Specifying the relevant configuration in the ([Config folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/config/adapter/esri))
+* Creating the pipeline for DFM to execute - Refer to the reference [source code here](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/service/execute/adapter/esri)
+* Defining the corresponding API Spec in the [API folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/api/esri)
+* Specifying the relevant configuration in the [Config folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/config/adapter/esri)
 
-Please refer to the sequence diagram for ([understanding the control flow](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/ram-cherukuri-patch-1/docs/06_sequence.md))
+Please refer to the sequence diagram for [understanding the control flow](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/ram-cherukuri-patch-1/docs/06_sequence.md)
 
 You will need the following to start building your own adapter:
-* DFM communicates via XArray format. You need to write your own python based pipeline to convert data from the external source to XArray. Refer to the source code here for ([reference](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py))
+* DFM communicates via XArray format. You need to write your own python based pipeline to convert data from the external source to XArray. Refer to the source code here for [reference](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py)
   
 Here are the steps to create your custom adapter:
-* Get ([DFM running](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py))
+* Get [DFM running](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py)
 * Using the above components as reference, write your own custom adapter 
-* The tests in the ([test folder](http://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/tests/dfm/test_dfm_service_execute_adapter_load_elevation_data.py)) provide an incremental way to check if your code is functional as you develop the specific components.
+* The tests in the [test folder](http://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/tests/dfm/test_dfm_service_execute_adapter_load_elevation_data.py) provide an incremental way to check if your code is functional as you develop the specific components.
 
-If you have questions or issues, we request your to ([file an issue right away](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/issues)) 
+If you have questions or issues, we request your to [file an issue right away](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/issues)
 
 <!-- Footer Navigation -->
 ---
