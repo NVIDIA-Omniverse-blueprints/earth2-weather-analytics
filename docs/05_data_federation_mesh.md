@@ -1,6 +1,6 @@
 # Earth-2 Weather Analytics Blueprint - DFM
 
-The Earth-2 Weather Analytics Omniverse blueprint uses Data Federation Mesh or DFM for reference implementation for processing, scheduling and executing the pipelines that create the data that is used by the kit application for the visualization.
+The Earth-2 Weather Analytics Omniverse blueprint uses Data Federation Mesh or DFM for reference implementation of processing, scheduling and executing the pipelines that create and transform the data that is rendered and visualized by the kit application.
 
 ## Data Federation Mesh
 
@@ -145,23 +145,23 @@ For example: `LoadModelData(provider='s3_buckets', ...)` and
 These can be interpreted as `my_site.s3_buckets.LoadModelData(...)` and `my_site.postgres_db.LoadModelData(...)`.
 
 ## Data Federation Mesh for Earth-2
-The blueprint has an instance of DFM with static pipelines created by various clients like the OV Kit app, the inference NIM, the adapters for ESRI, GFS. 
+The blueprint implements an instance of DFM with static pipelines created by clients like the OV Kit app, the inference NIM, adapters for public sources like GFS, ERA5, HRRR and from partners like ESRI as reference implementation and templates. 
 
 #### Developing a custom adapter
-The current version of the blueprint provides a couple of templates xxxx (links to the source code) to enable a developer to create a custom adapter. 
-* Three components :
-* Create the pipeline code of the adapter - lives under the services folder (https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/service/execute/adapter/esri)
-* Define corresponding API Spec (in the API folder)
-* Configuration for the developer (https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/config/adapter/esri)
+The current version of the blueprint provides the following template to enable a developer to create a custom adapter for any external data source. It requires the following three components:
+* Creating the pipeline for DFM to execute - Refer to the reference ([source code here](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/service/execute/adapter/esri))
+* Defining the corresponding API Spec in the ([API folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/api/esri))
+* Specifying the relevant configuration in the ([Config folder](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/config/adapter/esri))
 
-You will need the following to start:
-* DFM communicates via XArray - need to bring their own python based pipeline to convert to XArray
+You will need the following to start building your own adapter:
+* DFM communicates via XArray format. You need to write your own python based pipeline to convert data from the external source to XArray. Refer to the source code here for ([reference](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py))
   
-  
-Here are the steps to follow:
-* Get DFM running
-* Use one of the existing templates to do xxx
-* Tests (http://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/tests/dfm/test_dfm_service_execute_adapter_load_elevation_data.py)
+Here are the steps to create your custom adapter:
+* Get ([DFM running](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/dfm/service/execute/adapter/_adapter.py))
+* Using the above components as reference, write your own custom adapter 
+* The tests in the ([test folder](http://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/blob/main/src/tests/dfm/test_dfm_service_execute_adapter_load_elevation_data.py)) provide an incremental way to check if your code is functional as you develop the specific components.
+
+If you have questions or issues, we request your to ([file an issue right away](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/issues)) 
 
 <!-- Footer Navigation -->
 ---
