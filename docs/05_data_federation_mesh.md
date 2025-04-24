@@ -147,6 +147,14 @@ These can be interpreted as `my_site.s3_buckets.LoadModelData(...)` and `my_site
 ## Data Federation Mesh for Earth-2
 The blueprint implements an instance of DFM with static pipelines created by clients like the OV Kit app, the inference NIM, adapters for public sources like GFS, ERA5, HRRR and from partners like ESRI as reference implementation and templates. 
 
+#### Built-in Adapters
+There are a set of built-in adapters provided with the blueprint. These serve as templates for a class of data formats.
+* 2D geometry
+* 2D Raster format
+* XArray data
+* ??
+
+
 #### Developing a custom adapter
 The current version of the blueprint provides the following template to enable a developer to create a custom adapter for any external data source. It requires the following three components:
 * Creating the pipeline for DFM to execute - Refer to the reference ([source code here](https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics/tree/main/src/dfm/service/execute/adapter/esri))
