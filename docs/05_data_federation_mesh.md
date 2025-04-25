@@ -149,11 +149,10 @@ The blueprint implements an instance of DFM with static pipelines created by cli
 
 #### Built-in Adapters
 There are a set of built-in adapters provided with the blueprint. These serve as templates for a class of data formats.
-* 2D geometry
+* 2D Textures
 * 2D Raster format
 * XArray data
-* ??
-
+The ESRI built-in adapter uses the ArcGIS APIs to ingest the data that is in the supported format.
 
 #### Developing a custom adapter
 The current version of the blueprint provides the following template to enable a developer to create a custom adapter for any external data source. It requires the following three components:
