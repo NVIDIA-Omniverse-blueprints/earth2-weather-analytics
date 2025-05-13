@@ -11,8 +11,10 @@ There are a set of built-in adapters provided with the blueprint that serve as t
 Creating a custom adapter requires the following three components:
 * Creating the pipeline for DFM to execute - Refer to the reference (source code here)
 * Defining the corresponding API Spec in the (API folder)
-* Specifying the relevant configuration in the (Config folder)
-Please refer to the sequence diagram for (understanding the control flow)
+* Specifying the relevant configuration in the (Config folder).
+  
+Please refer to the sequence diagram for (understanding the control flow).
+
 You will need the following to start building your own adapter:
 * DFM communicates via XArray format. You need to write your own python based pipeline to convert data from the external source to XArray. Refer to the source code here for (reference)
 Here are the steps to create your custom adapter:
@@ -20,7 +22,11 @@ Here are the steps to create your custom adapter:
 * Using the above components as reference, write your own custom adapter
 * The tests in the (test folder) provide an incremental way to check if your code is functional as you develop the specific components.
 
-## Current Partners
+## Contributions 
+There are two main ways to contribute:
+1.	If you have an API endpoint and would like to develop a connector to the Earth-2 platform, please refer to the contribution guidelines , or contact us at xxx. Partners are responsible for maintaining and supporting the connector that they share.
+2.	If you have tutorials and/or data samples that exemplify how datasets can be used, please contact us at xxx.
+
 
 
 ## License
