@@ -9,7 +9,7 @@
 </div>
 
 The Earth-2 Weather Analytics Blueprint is a reference implementation of a geospatial
-data analysis service comprised of multiple features from NVIDIA's Earth-2 platform.
+data analysis service comprising multiple features from NVIDIA's Earth-2 platform.
 This repository provides a starting point for you to build your
 own weather / climate systems accelerated by AI and Omniverse.
 This blueprint will demonstrate the following core features and their integration to
