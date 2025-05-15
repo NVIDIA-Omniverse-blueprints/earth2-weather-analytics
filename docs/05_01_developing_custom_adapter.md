@@ -25,8 +25,8 @@ To set up your DFM development environment, follow the steps below.
 
 ### Setting Up Development Environment
 
-NOTE: This setup has been tested on Ubuntu 22.04 with `python==3.12`. 
-It may require additional steps and installations to use it on other OS or with a newer python version.
+**Note:** This setup has been tested on Ubuntu 22.04 with Python 3.12. 
+It may require additional steps and installations to use it on another OS or with a newer Python version.
 
 **Step 1**: Install base dependencies:
 
@@ -36,11 +36,9 @@ sudo apt update && sudo apt install -y curl gcc
 
 **Step 2**: Install `conda` and `poetry`. 
 If you already have `conda` and `poetry` installed, proceed to **Step 3**.
-Using of `conda` is not mandatory, you can use any other tool for environment management.
+Use of `conda` is not mandatory, you can use any other tool for environment management.
 
-- Installing `conda` using Miniforge distribution is described in [Miniforge documentation](https://conda-forge.org/download/).
-
-- Installing `poetry`
+Installing `conda` using Miniforge distribution is described in [Miniforge documentation](https://conda-forge.org/download/).
 
 It is recommended to install `poetry` outside of python virtual environment that is used for the development to prevent its dependencies from being overwritten. 
 
@@ -57,10 +55,12 @@ pipx ensurepath
 conda create -y -n dfm python=3.12
 conda activate dfm
 ```
+
 ### Installing Dependencies
 
 This will install all core and development dependencies:
 ```bash
+cd src/
 poetry install --with core,dev
 ```
 
@@ -72,10 +72,12 @@ Pay attention when choosing the group to add the dependency to (see [above](#dep
 
 ## Testing
 
-DFM uses standard Python `pytest` to manage tests. To run tests, make sure you used `dev` group during installation.
+To run the tests, make sure you used `dev` group during installation.
 
 Run DFM tests:
+
 ```bash
+# Make sure you're in the src/ directory!
 pytest tests/
 ```
 
@@ -85,8 +87,8 @@ With development environment ready and tested, we can start developing a new ada
 [Global Deterministic Prediction System (GDPS)](https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps-datamart_en/#data-location)
 data. 
 
-For the start, we will obtain 2-meter temperature data from date and time provided by the adapter parameter. Here is how the adapter API
-could look like:
+To start with, we will obtain 2-meter temperature data from date and time provided by the adapter parameter.
+Here is how the adapter API could look like:
 
 ```python
 """DfmFunction to load GDPS Data"""
@@ -241,16 +243,6 @@ Save the following code in `test_dfm_service_execute_adapter_load_gdps_data.py` 
 
 
 ```python
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
-#
-# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
-# property and proprietary rights in and to this material, related
-# documentation and any modifications thereto. Any use, reproduction,
-# disclosure or distribution of this material and related documentation
-# without an express license agreement from NVIDIA CORPORATION or
-# its affiliates is strictly prohibited.
-
 from unittest.mock import patch
 
 import numpy as np
@@ -320,7 +312,8 @@ pytest -sv src/tests/dfm/test_dfm_service_execute_adapter_load_gdps_data.py
 ```
 
 **Note** On some systems, there might be a conflict of available EC Codes libraries
-versions. You can force Python modules (including Herbie) to use the version provided
+versions. It usually leads to crashes or errors in code execution.
+You can force Python modules to use the version provided
 by the operating system by setting the following environmental variables:
 
 ```bash
@@ -371,18 +364,6 @@ data in Earth-2 Command Center. Save the following code (mostly the same as, for
 [HRRR pipeline](../src/pipelines/hrrr.py)) to `gdps.py` file in [pipelines directory](../src/pipelines/):
 
 ```python
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
-#
-# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
-# property and proprietary rights in and to this material, related
-# documentation and any modifications thereto. Any use, reproduction,
-# disclosure or distribution of this material and related documentation
-# without an express license agreement from NVIDIA CORPORATION or
-# its affiliates is strictly prohibited.
-
-# -*- coding: utf-8 -*-
-
 """
 This example demonstrates how to build an execution pipeline for the Earth2 Blueprint,
 and use the client library to run the pipeline. It also shows how to handle received responses.
@@ -581,7 +562,7 @@ if __name__ == "__main__":
 
 You can now go ahead and run it:
 ```bash
-python3 src/pipelines/gdps.py
+python3 pipelines/gdps.py
 ```
 
 If the program completes successfully, you should see a new JPEG file in your current working
