@@ -1,0 +1,13 @@
+[package]
+title = "Earth-2 Command Center Aviation UI"
+description = "Aviation weather analytics UI panel for E2CC"
+version = "1.0.0"
+category = "Application"
+
+[dependencies]
+"omni.earth_2_command_center.app.dfm" = {}
+"omni.earth_2_command_center.app.globe_view" = {}
+"omni.ui" = {}
+
+[[python.module]]
+name = "omni.earth_2_command_center.app.aviation_ui"

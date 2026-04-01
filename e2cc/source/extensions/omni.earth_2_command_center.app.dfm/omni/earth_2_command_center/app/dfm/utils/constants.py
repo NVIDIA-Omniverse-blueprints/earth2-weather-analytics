@@ -19,6 +19,12 @@ VARIABLE_LABELS = {
     "t2m": "Surface Temperature",
     "tp": "Total Precipitation",
     "tcwv": "Total Column Water Vapour",
+    # Aviation weather parameters
+    "wind_shear": "Wind Shear",
+    "ellrod_ti": "Turbulence (Ellrod)",
+    "icing_prob": "Icing Probability",
+    "crosswind": "Crosswind Component",
+    "headwind": "Headwind Component",
 }
 
 VARIABLE_RANGE = {
@@ -28,6 +34,12 @@ VARIABLE_RANGE = {
     "t2m": [250, 300],  # Kelvin
     "tp": [0.000001, 0.0025], # m
     "tcwv": [0, 90],
+    # Aviation weather parameters
+    "wind_shear": [0, 0.01],    # 1/s
+    "ellrod_ti": [0, 12],       # TI index
+    "icing_prob": [0, 1],       # probability
+    "crosswind": [-50, 50],     # kts
+    "headwind": [-100, 100],    # kts
 }
 
 VARIABLE_UNIT = {
@@ -37,6 +49,12 @@ VARIABLE_UNIT = {
     "t2m": "K",
     "tp": "cm/hr",
     "tcwv": "kg/m^2",
+    # Aviation weather parameters
+    "wind_shear": "1/s",
+    "ellrod_ti": "TI",
+    "icing_prob": "",
+    "crosswind": "kts",
+    "headwind": "kts",
 }
 
 VARIABLE_CMAP = {
@@ -46,4 +64,10 @@ VARIABLE_CMAP = {
     "t2m": "RdYlBu_r",
     "tp": "cubehelix",
     "tcwv": "gist_earth",
+    # Aviation weather parameters
+    "wind_shear": "hot",
+    "ellrod_ti": "YlOrRd",
+    "icing_prob": "cool",
+    "crosswind": "RdBu_r",
+    "headwind": "RdBu_r",
 }

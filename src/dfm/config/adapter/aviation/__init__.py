@@ -8,11 +8,8 @@
 # without an express license agreement from NVIDIA CORPORATION or
 # its affiliates is strictly prohibited.
 
-from .gfs import GFSPipeline  # noqa: F401
-from .era5 import ERA5Pipeline  # noqa: F401
-from .fcn import FourCastNetPipeline  # noqa: F401
-from .hrrr import HRRRPipeline  # noqa: F401
-from .esri_topo import ESRITopoPipeline  # noqa: F401
-from .aviation_weather import AviationWeatherPipeline  # noqa: F401
-from .flight_route import FlightRoutePipeline  # noqa: F401
-from .metar_stations import MetarStationsPipeline, PirepPipeline, SigmetPipeline  # noqa: F401
+"""Aviation data source adapter configurations."""
+from ._load_metar_data import LoadMetarData  # noqa: F401
+from ._load_taf_data import LoadTafData  # noqa: F401
+from ._load_pirep_data import LoadPirepData  # noqa: F401
+from ._load_sigmet_data import LoadSigmetData  # noqa: F401

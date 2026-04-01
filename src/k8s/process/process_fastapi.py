@@ -70,6 +70,10 @@ class AuthMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-meth
     """
 
     async def dispatch(self, request: Request, call_next):
+        # Skip auth for static files and dashboard
+        path = request.url.path
+        if path == "/" or path.startswith("/static") or path in ("/status", "/version") or path.startswith("/process") or path.startswith("/request/"):
+            return await call_next(request)
         # Authenticate request
         api_key = request.headers.get("X-DFM-Auth")
         if not app.state.auth.authenticate(api_key):
@@ -144,6 +148,19 @@ app = FastAPI(lifespan=lifespan, title="DFM Process")
 # Set up authentication middleware
 app.state.auth = get_auth(log)
 app.add_middleware(AuthMiddleware)
+
+# Serve aviation dashboard
+import pathlib as _pathlib
+_static_dir = _pathlib.Path(__file__).parent / "static"
+if _static_dir.is_dir():
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    @app.get("/")
+    async def root():
+        return FileResponse(_static_dir / "index.html")
+
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 
 @app.get("/status")

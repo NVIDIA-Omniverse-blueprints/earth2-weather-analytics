@@ -1,0 +1,78 @@
+services:
+  redis:
+    image: redis/redis-stack-server:7.2.0-v11
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  process:
+    build:
+      context: .
+      dockerfile: src/k8s/process/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - K8S_PROCESS_REDIS_HOST=redis
+      - K8S_PROCESS_REDIS_PORT=6379
+      - K8S_PROCESS_SITE_NAME=mini1
+      - DFM_AUTH_METHOD=none
+      - DFM_AUTH_API_KEY=dev-key
+      - OTEL_TRACES_EXPORTER=none
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - cache:/cache
+
+  execute:
+    build:
+      context: .
+      dockerfile: src/k8s/execute/Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - K8S_EXECUTE_REDIS_HOST=redis
+      - K8S_EXECUTE_REDIS_PORT=6379
+      - K8S_EXECUTE_SITE_CONFIG=/config/site-config.yaml
+      - DFM_AUTH_METHOD=none
+      - DFM_AUTH_API_KEY=dev-key
+      - OTEL_TRACES_EXPORTER=none
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - cache:/cache
+      - ./deploy/docker/site-config.yaml:/config/site-config.yaml:ro
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: src/k8s/scheduler/Dockerfile
+    environment:
+      - K8S_SCHEDULER_REDIS_HOST=redis
+      - K8S_SCHEDULER_REDIS_PORT=6379
+      - OTEL_TRACES_EXPORTER=none
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:
+  cache:

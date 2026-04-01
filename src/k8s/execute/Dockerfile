@@ -76,6 +76,9 @@ RUN for i in {1..3}; do \
     done && \
     rm ./pyproject.toml ./poetry.lock
 
+# Install earth2studio for FourCastNet AI weather model
+RUN pip install earth2studio || true
+
 # Install dependencies and bootstrap opentelemetry
 WORKDIR /app/k8s/execute
 RUN opentelemetry-bootstrap -a install

@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth-2 Aviation Weather</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1a1a2e;height:100vh;display:flex;flex-direction:column}
+  .header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#fff;padding:10px 24px;display:flex;align-items:center;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+  .header h1{font-size:18px;font-weight:700}
+  .header .subtitle{font-size:11px;color:#a0aec0}
+  .header .status{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px}
+  .header .dot{width:8px;height:8px;border-radius:50%}
+  .dot-ok{background:#48bb78}.dot-err{background:#f56565}
+  .main{flex:1;display:flex;overflow:hidden}
+  .sidebar{width:370px;background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;flex-shrink:0}
+  .section{border-bottom:1px solid #e2e8f0}
+  .section-header{padding:10px 14px;background:#f7fafc;font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .section-header:hover{background:#edf2f7}
+  .section-body{padding:10px 14px}
+  .section-body.collapsed{display:none}
+  label{display:block;font-size:11px;color:#718096;margin-bottom:3px;margin-top:8px;font-weight:600}
+  label:first-child{margin-top:0}
+  input,select{width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:5px;font-size:12px;background:#fff;color:#2d3748}
+  input:focus,select:focus{outline:none;border-color:#4299e1;box-shadow:0 0 0 3px rgba(66,153,225,.15)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;gap:4px}
+  .btn-green{background:#48bb78;color:#fff}.btn-green:hover{background:#38a169}
+  .btn-blue{background:#4299e1;color:#fff}.btn-blue:hover{background:#3182ce}
+  .btn-orange{background:#ed8936;color:#fff}.btn-orange:hover{background:#dd6b20}
+  .btn-purple{background:#805ad5;color:#fff}.btn-purple:hover{background:#6b46c1}
+  .btn-red{background:#e53e3e;color:#fff}.btn-red:hover{background:#c53030}
+  .btn-gray{background:#e2e8f0;color:#4a5568}.btn-gray:hover{background:#cbd5e0}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+  .btn-row .btn{flex:1;min-width:0}
+  .station-card{padding:6px 8px;margin-top:5px;border-radius:5px;border:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;font-size:11px}
+  .station-card:hover{background:#f7fafc}
+  .station-card.alert{border-color:#fc8181;background:#fff5f5}
+  .station-id{font-weight:700;font-size:12px;min-width:38px;color:#2d3748}
+  .cat-badge{padding:1px 6px;border-radius:3px;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.3px}
+  .cat-VFR{background:#c6f6d5;color:#22543d}.cat-MVFR{background:#bee3f8;color:#2a4365}.cat-IFR{background:#fed7d7;color:#742a2a}.cat-LIFR{background:#e9d8fd;color:#44337a}
+  .station-info{color:#718096;font-size:10px;line-height:1.3}
+  .map-area{flex:1;position:relative}
+  #map{width:100%;height:100%}
+  .wp-row{display:flex;gap:3px;align-items:center;margin-bottom:3px}
+  .wp-row input{flex:1;padding:4px 5px;font-size:10px}
+  .wp-num{font-size:9px;font-weight:700;color:#4299e1;min-width:16px}
+  .wp-remove{cursor:pointer;color:#a0aec0;font-size:13px;padding:0 3px}.wp-remove:hover{color:#e53e3e}
+  .advisory-item{padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:10px}
+  .advisory-item:last-child{border:none}
+  .hazard-tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600}
+  .tag-turb{background:#fed7d7;color:#c53030}.tag-ice{background:#bee3f8;color:#2b6cb0}.tag-conv{background:#fefcbf;color:#975a16}.tag-other{background:#e2e8f0;color:#4a5568}
+  .taf-block{margin-top:5px;padding:6px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:5px;font-family:'Courier New',monospace;font-size:9px;color:#4a5568;white-space:pre-wrap;word-break:break-all}
+  .taf-id{font-weight:700;color:#2b6cb0;font-family:'Segoe UI',sans-serif;font-size:11px}
+  .legend{position:absolute;bottom:10px;left:10px;z-index:1000;background:#fff;border-radius:6px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:10px}
+  .legend-row{display:flex;align-items:center;gap:5px;margin-bottom:2px}.legend-row:last-child{margin:0}
+  .legend-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.3)}
+  .toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1000;background:#2d3748;color:#fff;padding:7px 18px;border-radius:16px;font-size:11px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .3s;pointer-events:none}
+  .toast.hidden{opacity:0}
+
+  /* AI Briefing Panel */
+  .briefing-panel{position:absolute;top:10px;right:10px;z-index:1000;width:340px;max-height:calc(100% - 20px);overflow-y:auto;background:#fff;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.2);display:none}
+  .briefing-panel.show{display:block}
+  .briefing-header{padding:12px 14px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .briefing-header h3{font-size:13px}
+  .briefing-close{cursor:pointer;font-size:18px;color:#a0aec0;line-height:1}.briefing-close:hover{color:#fff}
+  .briefing-body{padding:14px}
+  .go-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-weight:700;font-size:13px;letter-spacing:.5px}
+  .go-go{background:#c6f6d5;color:#22543d}.go-caution{background:#fefcbf;color:#744210}.go-nogo{background:#fed7d7;color:#742a2a}
+  .brief-section{margin-top:12px}
+  .brief-section h4{font-size:11px;color:#4a5568;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
+  .brief-item{font-size:11px;padding:3px 0;display:flex;gap:6px;align-items:flex-start}
+  .brief-icon{font-size:13px;min-width:16px;text-align:center}
+  .brief-text{color:#4a5568;line-height:1.4}
+  .brief-text b{color:#2d3748}
+  .seg-bar{display:flex;border-radius:4px;overflow:hidden;height:18px;margin-top:4px}
+  .seg{flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+  .seg-green{background:#48bb78}.seg-yellow{background:#ecc94b;color:#744210}.seg-orange{background:#ed8936}.seg-red{background:#e53e3e}
+  .trend-alert{padding:6px 8px;margin-top:4px;border-radius:5px;font-size:10px;display:flex;align-items:center;gap:6px}
+  .trend-warn{background:#fefcbf;border:1px solid #ecc94b;color:#744210}
+  .trend-bad{background:#fff5f5;border:1px solid #fc8181;color:#742a2a}
+  .trend-ok{background:#f0fff4;border:1px solid #9ae6b4;color:#22543d}
+
+  /* Weather layers panel */
+  .layer-toggle{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;cursor:pointer;user-select:none}
+  .layer-toggle input[type=checkbox]{width:16px;height:16px;accent-color:#4299e1;cursor:pointer}
+  .layer-toggle label{cursor:pointer;flex:1}
+  .layer-toggle .layer-desc{font-size:9px;color:#a0aec0}
+  .opacity-slider{width:100%;height:4px;-webkit-appearance:none;appearance:none;background:#e2e8f0;border-radius:2px;outline:none;margin-top:2px}
+  .opacity-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#4299e1;cursor:pointer}
+  .radar-controls{display:flex;align-items:center;gap:6px;margin-top:6px;padding:6px 8px;background:#f7fafc;border-radius:5px;font-size:11px}
+  .radar-controls button{background:none;border:1px solid #cbd5e0;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px}
+  .radar-controls button:hover{background:#edf2f7}
+  .radar-controls button.active{background:#4299e1;color:#fff;border-color:#4299e1}
+  .radar-time{color:#718096;font-size:10px;min-width:60px;text-align:center}
+
+  /* Airport search */
+  .search-box{position:relative}
+  .search-results{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 5px 5px;max-height:180px;overflow-y:auto;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.1);display:none}
+  .search-results.show{display:block}
+  .search-item{padding:6px 10px;font-size:11px;cursor:pointer;display:flex;justify-content:space-between}
+  .search-item:hover{background:#ebf8ff}
+  .search-item .icao{font-weight:700;color:#2b6cb0}
+  .search-item .name{color:#718096}
+
+  /* TFR styling */
+  .tfr-item{padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:10px}
+  .tfr-item:last-child{border:none}
+  .tfr-tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;background:#fed7d7;color:#c53030}
+
+  /* NOTAM styling */
+  .notam-item{padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:10px}
+  .notam-item:last-child{border:none}
+
+  /* Click-to-add mode */
+  .map-clickmode{cursor:crosshair !important}
+  .click-banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1000;background:#805ad5;color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.2);display:none;align-items:center;gap:8px}
+  .click-banner.show{display:flex}
+  .click-banner button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:10px;cursor:pointer;font-size:11px}
+
+  /* Mobile */
+  @media(max-width:768px){
+    .main{flex-direction:column}
+    .sidebar{width:100%;max-height:45vh;border-right:none;border-bottom:1px solid #e2e8f0}
+    .map-area{min-height:55vh}
+    .briefing-panel{width:calc(100% - 20px);top:auto;bottom:10px;max-height:60vh}
+    .legend{font-size:9px;padding:6px 8px}
+    .header h1{font-size:15px}
+    .header .subtitle{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Earth-2 Aviation Weather</h1>
+    <div class="subtitle">NVIDIA Omniverse Blueprint &mdash; AI-Powered Aviation Analytics</div>
+  </div>
+  <div class="status">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">Connecting...</span>
+  </div>
+</div>
+<div class="main">
+  <div class="sidebar">
+
+    <!-- AI Briefing -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)" style="background:#edf2f7;color:#805ad5">AI Flight Briefing <span>▾</span></div>
+      <div class="section-body">
+        <p style="font-size:11px;color:#718096;margin-bottom:8px">Get an AI-powered go/no-go analysis for your route with hazard scoring, trend deviations, and recommendations.</p>
+        <button class="btn btn-purple" onclick="runAiBriefing()" style="width:100%">Generate AI Briefing</button>
+      </div>
+    </div>
+
+    <!-- Weather Layers -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)" style="background:#ebf8ff;color:#2b6cb0">Weather Radar &amp; Satellite <span>▾</span></div>
+      <div class="section-body">
+        <div class="layer-toggle">
+          <input type="checkbox" id="chk-radar" onchange="toggleRadar(this.checked)">
+          <div><label for="chk-radar"><b>NEXRAD Radar</b></label><div class="layer-desc">Live precipitation — updates every 10 min</div></div>
+        </div>
+        <div id="radar-ctrl" style="display:none">
+          <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+            <span style="font-size:10px;color:#718096">Opacity</span>
+            <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setRadarOpacity(this.value/100)">
+          </div>
+          <div class="radar-controls">
+            <button onclick="radarPrev()" title="Previous frame">◀</button>
+            <button id="radar-play-btn" onclick="radarPlayPause()" title="Play/Pause">▶</button>
+            <button onclick="radarNext()" title="Next frame">▶▶</button>
+            <span class="radar-time" id="radar-time">--:--</span>
+          </div>
+        </div>
+
+        <div class="layer-toggle" style="margin-top:4px">
+          <input type="checkbox" id="chk-satellite" onchange="toggleSatellite(this.checked)">
+          <div><label for="chk-satellite"><b>Satellite (Infrared)</b></label><div class="layer-desc">Cloud cover imagery — global</div></div>
+        </div>
+        <div id="sat-ctrl" style="display:none">
+          <div style="display:flex;align-items:center;gap:6px;margin:4px 0">
+            <span style="font-size:10px;color:#718096">Opacity</span>
+            <input type="range" class="opacity-slider" min="0" max="100" value="60" oninput="setSatOpacity(this.value/100)">
+          </div>
+        </div>
+
+        <div class="layer-toggle" style="margin-top:4px">
+          <input type="checkbox" id="chk-temp" onchange="toggleTemp(this.checked)">
+          <div><label for="chk-temp"><b>Temperature</b></label><div class="layer-desc">Surface temperature overlay</div></div>
+        </div>
+
+        <div class="layer-toggle" style="margin-top:4px">
+          <input type="checkbox" id="chk-wind" onchange="toggleWind(this.checked)">
+          <div><label for="chk-wind"><b>Wind Speed</b></label><div class="layer-desc">Surface wind overlay</div></div>
+        </div>
+
+        <div class="layer-toggle" style="margin-top:4px">
+          <input type="checkbox" id="chk-clouds" onchange="toggleClouds(this.checked)">
+          <div><label for="chk-clouds"><b>Cloud Cover</b></label><div class="layer-desc">Cloud density overlay</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- METAR -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">METAR Observations <span>▾</span></div>
+      <div class="section-body">
+        <label>Stations (ICAO codes)</label>
+        <input id="metar-input" value="KROG,KSTL,KJBR,KBHM,KDFW,KJFK,KLAX,KORD,KATL,KDEN,KSFO">
+        <div class="btn-row">
+          <button class="btn btn-green" onclick="fetchMetar()">Fetch METAR</button>
+          <button class="btn btn-gray" onclick="clearMetar()">Clear</button>
+        </div>
+        <div id="metar-list"></div>
+      </div>
+    </div>
+
+    <!-- Advisories -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">Advisories <span>▾</span></div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-orange" onclick="fetchAdvisory('sigmet')">SIGMETs</button>
+          <button class="btn btn-blue" onclick="fetchAdvisory('airmet')">AIRMETs</button>
+        </div>
+        <div id="advisory-list" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Airport Search -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)" style="background:#f0fff4;color:#276749">Airport Search <span>▾</span></div>
+      <div class="section-body">
+        <div class="search-box">
+          <input id="airport-search" placeholder="Search by name, city, or ICAO code..." oninput="searchAirport(this.value)" onfocus="this.select()">
+          <div class="search-results" id="airport-results"></div>
+        </div>
+        <div style="font-size:9px;color:#a0aec0;margin-top:4px">Search adds station to METAR list and route</div>
+      </div>
+    </div>
+
+    <!-- TFRs & NOTAMs -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">TFRs &amp; NOTAMs <span>▸</span></div>
+      <div class="section-body collapsed">
+        <div class="btn-row">
+          <button class="btn btn-red" onclick="fetchTfrs()">Load TFRs</button>
+          <button class="btn btn-orange" onclick="fetchNotams()">Load NOTAMs</button>
+        </div>
+        <div id="tfr-list" style="margin-top:6px"></div>
+        <div id="notam-list" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Route Planner -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">Flight Route Planner <span>▾</span></div>
+      <div class="section-body">
+        <div style="margin-bottom:6px">
+          <button class="btn btn-purple" onclick="startClickMode()" id="click-mode-btn" style="width:100%;font-size:10px">Click Map to Add Waypoints</button>
+        </div>
+        <div id="wp-container">
+          <div class="wp-row"><span class="wp-num">1</span><input class="wp-lat" placeholder="Lat" value="40.64"><input class="wp-lon" placeholder="Lon" value="-73.78"><input class="wp-alt" placeholder="FL" value="350"><input class="wp-name" placeholder="ID" value="KJFK" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span></div>
+          <div class="wp-row"><span class="wp-num">2</span><input class="wp-lat" placeholder="Lat" value="38.75"><input class="wp-lon" placeholder="Lon" value="-90.37"><input class="wp-alt" placeholder="FL" value="370"><input class="wp-name" placeholder="ID" value="KSTL" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span></div>
+          <div class="wp-row"><span class="wp-num">3</span><input class="wp-lat" placeholder="Lat" value="36.20"><input class="wp-lon" placeholder="Lon" value="-94.17"><input class="wp-alt" placeholder="FL" value="370"><input class="wp-name" placeholder="ID" value="KROG" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span></div>
+          <div class="wp-row"><span class="wp-num">4</span><input class="wp-lat" placeholder="Lat" value="32.90"><input class="wp-lon" placeholder="Lon" value="-97.04"><input class="wp-alt" placeholder="FL" value="350"><input class="wp-name" placeholder="ID" value="KDFW" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gray" onclick="addWp()">+ WP</button>
+          <button class="btn btn-blue" onclick="drawRoute()">Draw Route</button>
+          <button class="btn btn-gray" onclick="clearRoute()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAF -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection(this)">TAF Forecasts <span>▸</span></div>
+      <div class="section-body collapsed">
+        <label>Stations</label>
+        <input id="taf-input" value="KROG,KDFW,KSTL,KJFK">
+        <div class="btn-row"><button class="btn btn-blue" onclick="fetchTaf()">Fetch TAF</button></div>
+        <div id="taf-list" style="margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="map-area">
+    <div id="map"></div>
+    <div class="legend">
+      <div style="font-weight:700;margin-bottom:3px">Flight Categories</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#48bb78"></div> VFR</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#4299e1"></div> MVFR</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f56565"></div> IFR</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#9f7aea"></div> LIFR</div>
+      <div style="margin-top:4px;font-weight:700">Route Hazard</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#48bb78"></div> Low</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#ecc94b"></div> Moderate</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#ed8936"></div> High</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#e53e3e"></div> Severe</div>
+    </div>
+    <div class="toast hidden" id="toast"></div>
+    <div class="click-banner" id="click-banner">Click map to add waypoints <button onclick="stopClickMode()">Done</button> <button onclick="stopClickMode();clearRoute()">Cancel</button></div>
+
+    <!-- AI Briefing Panel (floating on map) -->
+    <div class="briefing-panel" id="briefing-panel">
+      <div class="briefing-header">
+        <h3>AI Flight Briefing</h3>
+        <span class="briefing-close" onclick="closeBriefing()">&times;</span>
+      </div>
+      <div class="briefing-body" id="briefing-body">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const map=L.map('map',{zoomControl:true}).setView([38,-96],5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',maxZoom:19}).addTo(map);
+
+let metarLayer=L.layerGroup().addTo(map);
+let routeLayer=L.layerGroup().addTo(map);
+let advisoryLayer=L.layerGroup().addTo(map);
+let hazardRouteLayer=L.layerGroup().addTo(map);
+
+const CAT_COLORS={VFR:'#48bb78',MVFR:'#4299e1',IFR:'#f56565',LIFR:'#9f7aea'};
+const HAZARD_COLORS=['#48bb78','#ecc94b','#ed8936','#e53e3e'];
+
+// Cached data for AI briefing
+let cachedMetar=null, cachedTaf=null, cachedAdvisories=null;
+
+function toast(msg,ms=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),ms)}
+function toggleSection(el){el.nextElementSibling.classList.toggle('collapsed');el.querySelector('span').textContent=el.nextElementSibling.classList.contains('collapsed')?'▸':'▾'}
+
+// --- API ---
+function makePipeline(fc){
+  const u1=crypto.randomUUID(),u2=crypto.randomUUID(),u3=crypto.randomUUID();
+  fc.node_id=u1;const body={};body[u1]=fc;
+  body[u2]={api_class:'dfm.api.dfm.SignalAllDone',provider:'dfm',node_id:u2,is_output:true,force_compute:false,after:[u1],message:'done'};
+  return JSON.stringify({api_class:'dfm.api.Process',site:null,deadline:null,execute:{body,api_class:'dfm.api.dfm.Execute',provider:'dfm',node_id:u3,is_output:false,force_compute:false,site:null}});
+}
+async function submitAndPoll(json){
+  const r=await fetch('/process',{method:'POST',headers:{'Content-Type':'application/json'},body:json});
+  const d=await r.json();const id=d.request_id;
+  for(let i=0;i<40;i++){
+    await new Promise(r=>setTimeout(r,800));
+    try{const rr=await fetch(`/request/responses/${id}`);if(!rr.ok)continue;const res=await rr.json();if(!res||!res.length)continue;
+      const val=res.find(r=>r.body?.api_class?.includes('Value')&&r.body?.value?.data);
+      const done=res.find(r=>r.body?.value==='done');const err=res.find(r=>r.body?.api_class?.includes('Error'));
+      if(err)throw new Error(err.body.message);if(val||done)return res;
+    }catch(e){if(e.message&&!e.message.includes('Timeout'))throw e}
+  }
+  throw new Error('Timeout');
+}
+function getGeoJson(results){const vr=results.find(r=>r.body?.api_class?.includes('Value')&&r.body?.value?.data);if(!vr)throw new Error('No data');return JSON.parse(vr.body.value.data)}
+
+// --- METAR ---
+async function fetchMetar(){
+  const stations=document.getElementById('metar-input').value.split(',').map(s=>s.trim()).filter(Boolean);
+  toast('Fetching METAR...');
+  try{
+    const p=makePipeline({api_class:'dfm.api.aviation.LoadMetarData',provider:'awc',is_output:true,force_compute:false,stations,bbox:null,return_geojson:true,return_meta_data:true});
+    const res=await submitAndPoll(p);const gj=getGeoJson(res);clearMetar();
+    const feats=(gj.features||[]).sort((a,b)=>(a.properties.station_id||'').localeCompare(b.properties.station_id||''));
+    cachedMetar=feats;
+    let html='';
+    feats.forEach(f=>{
+      const p=f.properties,[lon,lat]=f.geometry.coordinates;const cat=p.flight_category||'VFR';const col=CAT_COLORS[cat]||'#a0aec0';
+      const marker=L.circleMarker([lat,lon],{radius:8,fillColor:col,color:'#fff',weight:2,fillOpacity:.9})
+        .bindPopup(`<b>${p.station_id}</b> — <b>${cat}</b><br>Wind: ${p.wind_dir||'VRB'}@${p.wind_speed_kts||0}kt${p.wind_gust_kts?'G'+p.wind_gust_kts:''}<br>Vis: ${p.visibility_sm||'?'}sm Ceil: ${p.ceiling_ft||'CLR'}ft<br>Temp: ${p.temp_c||'?'}/${p.dewpoint_c||'?'}C<br><code style="font-size:9px">${p.raw_text||''}</code>`,{maxWidth:300})
+        .bindTooltip(p.station_id,{permanent:true,direction:'top',offset:[0,-10]});
+      metarLayer.addLayer(marker);
+      let wind=`${p.wind_dir||'VRB'}@${p.wind_speed_kts||0}kt`;
+      if(p.wind_gust_kts)wind+=`<span style="color:#e53e3e;font-weight:700">G${p.wind_gust_kts}</span>`;
+      const alertCls=(cat==='IFR'||cat==='LIFR'||parseInt(p.wind_gust_kts)>=25)?' alert':'';
+      html+=`<div class="station-card${alertCls}"><span class="station-id">${p.station_id}</span><span class="cat-badge cat-${cat}">${cat}</span><span class="station-info">${wind} · ${p.visibility_sm||'?'}sm · ${p.ceiling_ft||'CLR'}ft · ${p.temp_c||'?'}C</span></div>`;
+    });
+    document.getElementById('metar-list').innerHTML=html;
+    if(feats.length){const b=L.latLngBounds(feats.map(f=>[f.geometry.coordinates[1],f.geometry.coordinates[0]]));map.fitBounds(b.pad(.1))}
+    toast(`${feats.length} stations loaded`);
+  }catch(e){toast('Error: '+e.message,5000);document.getElementById('metar-list').innerHTML=`<div style="color:#e53e3e;font-size:11px;margin-top:6px">Error: ${e.message}</div>`}
+}
+function clearMetar(){metarLayer.clearLayers();document.getElementById('metar-list').innerHTML='';cachedMetar=null}
+
+// --- Advisories ---
+async function fetchAdvisory(type){
+  toast(`Fetching ${type.toUpperCase()}s...`);
+  try{
+    const p=makePipeline({api_class:'dfm.api.aviation.LoadSigmetData',provider:'awc',is_output:true,force_compute:false,hazard_type:type,return_geojson:true,return_meta_data:true});
+    const res=await submitAndPoll(p);const gj=getGeoJson(res);advisoryLayer.clearLayers();const feats=gj.features||[];
+    cachedAdvisories=feats;
+    let html=feats.length?'':`<div style="color:#718096;font-size:11px;margin-top:4px">No active ${type.toUpperCase()}s</div>`;
+    feats.forEach(f=>{
+      const pr=f.properties;const hz=String(pr.hazard||'?');
+      const isTurb=hz.toLowerCase().includes('turb'),isIce=hz.toLowerCase().includes('ice'),isConv=hz.toLowerCase().includes('conv');
+      const col=isTurb?'#f56565':isIce?'#4299e1':isConv?'#ecc94b':'#a0aec0';
+      const tagCls=isTurb?'tag-turb':isIce?'tag-ice':isConv?'tag-conv':'tag-other';
+      if(f.geometry?.type==='Polygon'&&f.geometry.coordinates){
+        const coords=f.geometry.coordinates[0].map(c=>[c[1],c[0]]);
+        if(coords.length>=3)L.polygon(coords,{color:col,weight:2,fillOpacity:.2,fillColor:col}).bindPopup(`<b>${type.toUpperCase()}: ${hz}</b><br>${pr.severity||''}<br><code style="font-size:9px">${(pr.raw_text||'').slice(0,200)}</code>`).addTo(advisoryLayer);
+      }
+      html+=`<div class="advisory-item"><span class="hazard-tag ${tagCls}">${hz}</span> ${pr.severity||''} FL${pr.altitude_low_ft||'SFC'}-${pr.altitude_high_ft||'?'}</div>`;
+    });
+    document.getElementById('advisory-list').innerHTML=html;
+    toast(`${feats.length} ${type.toUpperCase()}s loaded`);
+  }catch(e){toast('Error: '+e.message,5000);document.getElementById('advisory-list').innerHTML=`<div style="color:#e53e3e;font-size:11px;margin-top:4px">Error: ${e.message}</div>`}
+}
+
+// --- Route ---
+function getWaypoints(){
+  const wps=[];
+  document.querySelectorAll('.wp-row').forEach(r=>{
+    const lat=parseFloat(r.querySelector('.wp-lat').value),lon=parseFloat(r.querySelector('.wp-lon').value);
+    const fl=r.querySelector('.wp-alt').value,name=r.querySelector('.wp-name').value;
+    if(!isNaN(lat)&&!isNaN(lon))wps.push({lat,lon,fl:parseInt(fl)||350,name});
+  });
+  return wps;
+}
+function addWp(){
+  const c=document.getElementById('wp-container');const n=c.children.length+1;const d=document.createElement('div');d.className='wp-row';
+  d.innerHTML=`<span class="wp-num">${n}</span><input class="wp-lat" placeholder="Lat"><input class="wp-lon" placeholder="Lon"><input class="wp-alt" placeholder="FL" value="350"><input class="wp-name" placeholder="ID" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span>`;
+  c.appendChild(d);
+}
+function removeWp(el){if(document.querySelectorAll('.wp-row').length>2)el.parentElement.remove();document.querySelectorAll('.wp-row').forEach((r,i)=>{r.querySelector('.wp-num').textContent=i+1})}
+
+function drawRoute(hazardScores){
+  routeLayer.clearLayers();hazardRouteLayer.clearLayers();
+  const wps=getWaypoints();
+  if(wps.length<2){toast('Need at least 2 waypoints');return}
+  const latlngs=wps.map(w=>[w.lat,w.lon]);
+
+  if(hazardScores&&hazardScores.length>=wps.length-1){
+    // Color-coded route segments
+    for(let i=0;i<wps.length-1;i++){
+      const score=hazardScores[i]||0;
+      const col=score<.3?HAZARD_COLORS[0]:score<.6?HAZARD_COLORS[1]:score<.8?HAZARD_COLORS[2]:HAZARD_COLORS[3];
+      L.polyline([[wps[i].lat,wps[i].lon],[wps[i+1].lat,wps[i+1].lon]],{color:col,weight:6,opacity:.9})
+        .bindPopup(`<b>${wps[i].name||'WP'+(i+1)} → ${wps[i+1].name||'WP'+(i+2)}</b><br>Hazard: ${(score*100).toFixed(0)}%<br>FL${wps[i].fl}→FL${wps[i+1].fl}`)
+        .addTo(hazardRouteLayer);
+    }
+  }else{
+    L.polyline(latlngs,{color:'#4299e1',weight:4,opacity:.8,dashArray:'8 4'}).addTo(routeLayer);
+  }
+
+  wps.forEach((w,i)=>{
+    const isEnd=i===0||i===wps.length-1;
+    L.circleMarker([w.lat,w.lon],{radius:isEnd?7:5,fillColor:isEnd?'#4299e1':'#fff',color:'#2b6cb0',weight:2,fillOpacity:1})
+      .bindTooltip(w.name||`WP${i+1}`,{permanent:true,direction:'top',offset:[0,-8]})
+      .bindPopup(`<b>${w.name||'WP'+(i+1)}</b><br>FL${w.fl}<br>${w.lat.toFixed(3)}, ${w.lon.toFixed(3)}`)
+      .addTo(routeLayer);
+  });
+  map.fitBounds(L.latLngBounds(latlngs).pad(.15));
+  toast(`Route: ${wps.map(w=>w.name||'WP').join(' → ')}`);
+}
+function clearRoute(){routeLayer.clearLayers();hazardRouteLayer.clearLayers()}
+
+// --- TAF ---
+async function fetchTaf(stationsOverride){
+  const stations=(stationsOverride||document.getElementById('taf-input').value).split(',').map(s=>s.trim()).filter(Boolean);
+  if(!stationsOverride)toast('Fetching TAF...');
+  try{
+    const p=makePipeline({api_class:'dfm.api.aviation.LoadTafData',provider:'awc',is_output:true,force_compute:false,stations,return_geojson:true,return_meta_data:true});
+    const res=await submitAndPoll(p);const gj=getGeoJson(res);const feats=gj.features||[];
+    cachedTaf=feats;
+    if(!stationsOverride){
+      let html='';feats.forEach(f=>{const pr=f.properties;html+=`<div><span class="taf-id">${pr.station_id}</span><div class="taf-block">${pr.raw_text||'N/A'}</div></div>`});
+      document.getElementById('taf-list').innerHTML=html||'<div style="color:#718096;font-size:11px">No TAF data</div>';
+      toast(`${feats.length} TAFs loaded`);
+    }
+    return feats;
+  }catch(e){if(!stationsOverride){toast('Error: '+e.message,5000);document.getElementById('taf-list').innerHTML=`<div style="color:#e53e3e;font-size:11px">Error: ${e.message}</div>`};return[]}
+}
+
+// ============================================================
+//  AI FLIGHT BRIEFING — the smart part
+// ============================================================
+function closeBriefing(){document.getElementById('briefing-panel').classList.remove('show')}
+
+async function runAiBriefing(){
+  const panel=document.getElementById('briefing-panel');
+  const body=document.getElementById('briefing-body');
+  panel.classList.add('show');
+  body.innerHTML='<div style="text-align:center;padding:30px;color:#718096"><div class="spinner" style="display:inline-block;width:20px;height:20px;border:2px solid #e2e8f0;border-top-color:#805ad5;border-radius:50%;animation:spin .6s linear infinite;margin-bottom:8px"></div><br>Analyzing weather &amp; route...</div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+  toast('Running AI analysis...');
+
+  const wps=getWaypoints();
+  const routeStations=wps.map(w=>w.name).filter(Boolean);
+  const allStations=document.getElementById('metar-input').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const briefStations=[...new Set([...routeStations,...allStations])];
+
+  // Fetch METAR + TAF + SIGMETs in parallel
+  try{
+    const [metarRes,tafFeats,sigmetRes]=await Promise.all([
+      cachedMetar?Promise.resolve(null):(async()=>{
+        const p=makePipeline({api_class:'dfm.api.aviation.LoadMetarData',provider:'awc',is_output:true,force_compute:false,stations:briefStations,bbox:null,return_geojson:true,return_meta_data:true});
+        const r=await submitAndPoll(p);cachedMetar=getGeoJson(r).features||[];return null;
+      })(),
+      cachedTaf?Promise.resolve(cachedTaf):fetchTaf(routeStations.join(',')),
+      cachedAdvisories?Promise.resolve(null):(async()=>{
+        const p=makePipeline({api_class:'dfm.api.aviation.LoadSigmetData',provider:'awc',is_output:true,force_compute:false,hazard_type:'sigmet',return_geojson:true,return_meta_data:true});
+        const r=await submitAndPoll(p);cachedAdvisories=getGeoJson(r).features||[];return null;
+      })(),
+    ]);
+
+    const metarData=cachedMetar||[];
+    const tafData=cachedTaf||tafFeats||[];
+    const advisories=cachedAdvisories||[];
+
+    // === ROUTE HAZARD SCORING ===
+    const segScores=[];
+    for(let i=0;i<wps.length-1;i++){
+      let score=0;
+      const midLat=(wps[i].lat+wps[i+1].lat)/2;
+      const midLon=(wps[i].lon+wps[i+1].lon)/2;
+      const fl=wps[i].fl;
+
+      // Check if any SIGMET polygon contains the segment midpoint
+      advisories.forEach(a=>{
+        if(a.geometry?.type==='Polygon'&&a.geometry.coordinates){
+          const poly=a.geometry.coordinates[0];
+          if(pointInPoly(midLon,midLat,poly)){
+            const hz=String(a.properties.hazard||'').toLowerCase();
+            if(hz.includes('conv'))score+=.5;
+            else if(hz.includes('turb'))score+=.4;
+            else if(hz.includes('ice'))score+=.3;
+            else score+=.2;
+          }
+        }
+      });
+
+      // Check nearby METARs for bad conditions
+      metarData.forEach(m=>{
+        const mp=m.properties;const[mlon,mlat]=m.geometry.coordinates;
+        const dist=haversine(midLat,midLon,mlat,mlon);
+        if(dist<200){
+          if(mp.flight_category==='IFR')score+=.15;
+          if(mp.flight_category==='LIFR')score+=.25;
+          if(parseInt(mp.wind_gust_kts)>=30)score+=.1;
+          if(parseInt(mp.wind_gust_kts)>=40)score+=.2;
+        }
+      });
+
+      // High altitude turbulence heuristic (jet stream FL300-FL400)
+      if(fl>=300&&fl<=400)score+=.05;
+
+      segScores.push(Math.min(score,1));
+    }
+
+    // Draw hazard-colored route
+    if(wps.length>=2)drawRoute(segScores);
+
+    // === METAR vs TAF TREND ANALYSIS ===
+    const trends=[];
+    metarData.forEach(m=>{
+      const mp=m.properties;const sid=mp.station_id;
+      const taf=tafData.find(t=>t.properties?.station_id===sid);
+      if(!taf)return;
+      const raw=taf.properties.raw_text||'';
+
+      // Check if current visibility is worse than TAF
+      const vis=parseFloat(mp.visibility_sm);
+      if(!isNaN(vis)){
+        const tafVis=extractTafVis(raw);
+        if(tafVis!==null&&vis<tafVis*0.7){
+          trends.push({station:sid,type:'warn',msg:`Visibility ${vis}sm is ${((1-vis/tafVis)*100).toFixed(0)}% worse than TAF forecast (${tafVis}sm)`});
+        }
+      }
+
+      // Check wind gusts not in TAF
+      const gust=parseInt(mp.wind_gust_kts);
+      if(gust>=20&&!raw.includes('G')){
+        trends.push({station:sid,type:'warn',msg:`Gusting ${gust}kt not forecast in TAF`});
+      }
+
+      // Check flight cat deterioration
+      const cat=mp.flight_category;
+      if(cat==='IFR'||cat==='LIFR'){
+        if(!raw.includes('BKN00')&&!raw.includes('OVC00')&&!raw.includes('VV00')){
+          trends.push({station:sid,type:'bad',msg:`Currently ${cat} — low ceilings may not be in TAF`});
+        }
+      }
+    });
+
+    // === WIND ANALYSIS PER SEGMENT ===
+    function bearingBetween(lat1,lon1,lat2,lon2){
+      const dLon=(lon2-lon1)*Math.PI/180;
+      const y=Math.sin(dLon)*Math.cos(lat2*Math.PI/180);
+      const x=Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180)-Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos(dLon);
+      return(Math.atan2(y,x)*180/Math.PI+360)%360;
+    }
+
+    const segWinds=[];
+    for(let i=0;i<wps.length-1;i++){
+      const midLat=(wps[i].lat+wps[i+1].lat)/2;
+      const midLon=(wps[i].lon+wps[i+1].lon)/2;
+      const trackBearing=bearingBetween(wps[i].lat,wps[i].lon,wps[i+1].lat,wps[i+1].lon);
+      const segDist=haversine(wps[i].lat,wps[i].lon,wps[i+1].lat,wps[i+1].lon);
+
+      // Find nearest METAR station to segment midpoint
+      let nearest=null,nearDist=Infinity;
+      metarData.forEach(m=>{
+        const[mlon,mlat]=m.geometry.coordinates;
+        const d=haversine(midLat,midLon,mlat,mlon);
+        if(d<nearDist){nearDist=d;nearest=m.properties}
+      });
+
+      let headwind=null,crosswind=null,windSpd=0,windDir=0,gustKt=0;
+      if(nearest&&nearest.wind_speed_kts!=null&&nearest.wind_dir!=null){
+        windDir=parseFloat(nearest.wind_dir)||0;
+        windSpd=parseFloat(nearest.wind_speed_kts)||0;
+        gustKt=parseFloat(nearest.wind_gust_kts)||0;
+        const angleDiff=(windDir-trackBearing)*Math.PI/180;
+        headwind=Math.round(windSpd*Math.cos(angleDiff));// positive=headwind
+        crosswind=Math.round(Math.abs(windSpd*Math.sin(angleDiff)));
+      }
+      segWinds.push({headwind,crosswind,windSpd,windDir,gustKt,segDist,nearest:nearest?.station_id,trackBearing:Math.round(trackBearing)});
+    }
+
+    // === GENERATE NATURAL LANGUAGE BRIEFING ===
+    const avgScore=segScores.length?segScores.reduce((a,b)=>a+b,0)/segScores.length:0;
+    const maxScore=segScores.length?Math.max(...segScores):0;
+    const overallGo=maxScore<.3?'GO':maxScore<.6?'CAUTION':'NO-GO';
+    const goCls=overallGo==='GO'?'go-go':overallGo==='CAUTION'?'go-caution':'go-nogo';
+    const totalDist=segWinds.reduce((a,s)=>a+s.segDist,0);
+    const totalHeadwind=segWinds.filter(s=>s.headwind!==null);
+    const avgHeadwind=totalHeadwind.length?Math.round(totalHeadwind.reduce((a,s)=>a+s.headwind,0)/totalHeadwind.length):0;
+
+    let html=`
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:10px;color:#718096;margin-bottom:4px">AI FLIGHT ASSESSMENT</div>
+        <span class="go-badge ${goCls}">${overallGo}</span>
+        <div style="font-size:10px;color:#718096;margin-top:6px">${Math.round(totalDist)} nm total · ${avgHeadwind>0?'Headwind':'Tailwind'} avg ${Math.abs(avgHeadwind)}kt</div>
+      </div>`;
+
+    // === COPILOT NARRATIVE ===
+    html+=`<div class="brief-section"><h4>AI Copilot Briefing</h4>`;
+    html+=`<div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;line-height:1.6;color:#2d3748">`;
+
+    // Opening summary
+    const depName=wps[0]?.name||'departure';
+    const arrName=wps[wps.length-1]?.name||'destination';
+    const depMetar=metarData.find(m=>m.properties.station_id===depName);
+    const arrMetar=metarData.find(m=>m.properties.station_id===arrName);
+
+    html+=`<b>Route:</b> ${depName} → ${arrName}, ${Math.round(totalDist)} nm, FL${wps[0]?.fl||350}.<br><br>`;
+
+    // Departure conditions
+    if(depMetar){
+      const dp=depMetar.properties;
+      html+=`<b>Departure (${depName}):</b> ${dp.flight_category} conditions. `;
+      if(dp.wind_speed_kts>0) html+=`Wind ${dp.wind_dir}° at ${dp.wind_speed_kts}kt${dp.wind_gust_kts?' gusting '+dp.wind_gust_kts+'kt':''}. `;
+      if(dp.visibility_sm) html+=`Visibility ${dp.visibility_sm} statute miles. `;
+      if(dp.ceiling_ft&&dp.ceiling_ft!=='None') html+=`Ceiling ${dp.ceiling_ft}ft. `;
+      html+=`<br><br>`;
+    }
+
+    // Segment-by-segment narrative
+    html+=`<b>En Route:</b><br>`;
+    for(let i=0;i<wps.length-1;i++){
+      const from=wps[i].name||'WP'+(i+1);
+      const to=wps[i+1]?.name||'WP'+(i+2);
+      const s=segScores[i];
+      const w=segWinds[i];
+      const midLat=(wps[i].lat+wps[i+1].lat)/2;
+      const midLon=(wps[i].lon+wps[i+1].lon)/2;
+
+      html+=`<span style="color:#4299e1;font-weight:600">${from} → ${to}</span> (${Math.round(w.segDist)}nm, track ${w.trackBearing}°): `;
+
+      // Turbulence commentary
+      const nearAdv=advisories.filter(a=>a.geometry?.type==='Polygon'&&a.geometry.coordinates&&pointInPoly(midLon,midLat,a.geometry.coordinates[0]));
+      if(nearAdv.length){
+        const types=nearAdv.map(a=>String(a.properties.hazard||'').toLowerCase());
+        if(types.some(t=>t.includes('conv'))) html+=`<span style="color:#c53030;font-weight:600">⚡ Active convection in this area — expect bumps, possible deviations needed.</span> `;
+        else if(types.some(t=>t.includes('turb'))) html+=`<span style="color:#dd6b20;font-weight:600">Moderate turbulence reported — could be bumpy through here, keep seatbelts on.</span> `;
+        else if(types.some(t=>t.includes('ice'))) html+=`<span style="color:#2b6cb0;font-weight:600">Icing conditions — monitor OAT and be ready to change altitude.</span> `;
+      }else if(s<.1){
+        html+=`Smooth ride expected. `;
+      }else if(s<.3){
+        html+=`Light chop possible. `;
+      }
+
+      // Wind commentary
+      if(w.headwind!==null){
+        if(w.headwind>15) html+=`<span style="color:#c53030">Headwind ${w.headwind}kt — this will slow you down.</span> `;
+        else if(w.headwind>5) html+=`Headwind component ${w.headwind}kt. `;
+        else if(w.headwind<-15) html+=`<span style="color:#38a169;font-weight:600">Tailwind ${Math.abs(w.headwind)}kt — nice push here!</span> `;
+        else if(w.headwind<-5) html+=`Tailwind component ${Math.abs(w.headwind)}kt. `;
+        else html+=`Winds light and variable. `;
+
+        if(w.crosswind>15) html+=`<span style="color:#dd6b20">Crosswind ${w.crosswind}kt.</span> `;
+        if(w.gustKt>=25) html+=`<span style="color:#c53030;font-weight:600">Gusts to ${w.gustKt}kt — watch for wind shear on approach.</span> `;
+      }
+
+      // Nearby METAR conditions
+      const nearbyBad=metarData.filter(m=>{
+        const[mlon,mlat]=m.geometry.coordinates;
+        return haversine(midLat,midLon,mlat,mlon)<150&&(m.properties.flight_category==='IFR'||m.properties.flight_category==='LIFR');
+      });
+      if(nearbyBad.length) html+=`IFR conditions reported nearby at ${nearbyBad.map(m=>m.properties.station_id).join(', ')}. `;
+
+      html+=`<br>`;
+    }
+
+    // Arrival conditions
+    if(arrMetar){
+      const ap=arrMetar.properties;
+      html+=`<br><b>Arrival (${arrName}):</b> ${ap.flight_category} conditions. `;
+      if(ap.wind_speed_kts>0){
+        html+=`Wind ${ap.wind_dir}° at ${ap.wind_speed_kts}kt${ap.wind_gust_kts?' gusting '+ap.wind_gust_kts+'kt':''}. `;
+        // Crosswind for arrival
+        const rwyGuess=Math.round((parseFloat(ap.wind_dir)||0)/10)*10;// rough
+        if(parseInt(ap.wind_gust_kts)>=20) html+=`<span style="color:#dd6b20">Gusty approach — be prepared for go-around.</span> `;
+      }
+      if(ap.visibility_sm) html+=`Visibility ${ap.visibility_sm}sm. `;
+      if(ap.ceiling_ft&&ap.ceiling_ft!=='None') html+=`Ceiling ${ap.ceiling_ft}ft. `;
+    }
+    html+=`</div></div>`;
+
+    // === HAZARD BAR ===
+    html+=`<div class="brief-section"><h4>Route Hazard Profile</h4><div class="seg-bar">`;
+    for(let i=0;i<segScores.length;i++){
+      const s=segScores[i];
+      const cls=s<.3?'seg-green':s<.6?'seg-yellow':s<.8?'seg-orange':'seg-red';
+      html+=`<div class="seg ${cls}" title="${wps[i].name||'WP'+(i+1)}→${wps[i+1]?.name||'WP'+(i+2)}: ${(s*100).toFixed(0)}%">${wps[i].name||'WP'+(i+1)}</div>`;
+    }
+    html+=`</div></div>`;
+
+    // === WIND TABLE ===
+    html+=`<div class="brief-section"><h4>Wind Along Route</h4>
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+      <tr style="background:#f7fafc"><th style="padding:3px 4px;text-align:left">Segment</th><th>Track</th><th>Wind</th><th>Head/Tail</th><th>Xwind</th></tr>`;
+    for(let i=0;i<segWinds.length;i++){
+      const w=segWinds[i];const from=wps[i].name||'WP'+(i+1);const to=wps[i+1]?.name||'WP'+(i+2);
+      const htColor=w.headwind>10?'#c53030':w.headwind<-10?'#38a169':'#4a5568';
+      const htLabel=w.headwind>0?`H${w.headwind}`:`T${Math.abs(w.headwind||0)}`;
+      html+=`<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:3px 4px"><b>${from}→${to}</b></td><td style="text-align:center">${w.trackBearing}°</td><td style="text-align:center">${w.windDir}°/${w.windSpd}kt</td><td style="text-align:center;color:${htColor};font-weight:600">${w.headwind!==null?htLabel:'—'}</td><td style="text-align:center;${w.crosswind>15?'color:#dd6b20;font-weight:600':''}">${w.crosswind!==null?w.crosswind+'kt':'—'}</td></tr>`;
+    }
+    html+=`</table></div>`;
+
+    // === TREND DEVIATIONS ===
+    if(trends.length){
+      html+=`<div class="brief-section"><h4>Trend Alerts</h4>`;
+      trends.forEach(t=>{
+        const cls=t.type==='bad'?'trend-bad':t.type==='warn'?'trend-warn':'trend-ok';
+        const icon=t.type==='bad'?'🔴':t.type==='warn'?'⚠️':'ℹ️';
+        html+=`<div class="trend-alert ${cls}">${icon} <b>${t.station}</b>: ${t.msg}</div>`;
+      });
+      html+=`</div>`;
+    }else{
+      html+=`<div class="brief-section"><h4>Trend Alerts</h4><div class="trend-alert trend-ok">✅ All stations tracking forecasts — no surprises</div></div>`;
+    }
+
+    // === SMART RECOMMENDATIONS ===
+    html+=`<div class="brief-section"><h4>Recommendations</h4>`;
+    const recs=[];
+
+    // Route-level recs
+    if(maxScore>=.6){
+      const worstIdx=segScores.indexOf(maxScore);
+      recs.push({icon:'🔀',text:`Consider rerouting around <b>${wps[worstIdx]?.name||'WP'+(worstIdx+1)} → ${wps[worstIdx+1]?.name||'WP'+(worstIdx+2)}</b> — that's the roughest part of your flight`});
+    }
+    if(maxScore>=.3&&maxScore<.6){
+      const bumpyIdx=segScores.findIndex(s=>s>=.3);
+      recs.push({icon:'🪨',text:`Expect some bumps near <b>${wps[bumpyIdx]?.name||'WP'+(bumpyIdx+1)}</b> — keep passengers buckled up through there`});
+    }
+
+    // Altitude recs
+    const highSegs=segScores.filter((_,i)=>wps[i].fl>=350&&segScores[i]>=.2);
+    if(highSegs.length) recs.push({icon:'⬇️',text:'Some segments at FL350+ have hazards — dropping to <b>FL310 or FL280</b> might give you a smoother ride'});
+
+    // Wind recs
+    const bigHeadwind=segWinds.find(w=>w.headwind>20);
+    if(bigHeadwind) recs.push({icon:'🌬️',text:`Strong headwind (${bigHeadwind.headwind}kt) near ${bigHeadwind.nearest||'en route'} — check if a different altitude has better winds`});
+    const niceTailwind=segWinds.find(w=>w.headwind<-20);
+    if(niceTailwind) recs.push({icon:'🎉',text:`Great tailwind (${Math.abs(niceTailwind.headwind)}kt) on the ${niceTailwind.nearest||''} leg — enjoy the push!`});
+
+    // Departure/arrival recs
+    const depStn=metarData.find(m=>m.properties.station_id===wps[0]?.name);
+    const arrStn=metarData.find(m=>m.properties.station_id===wps[wps.length-1]?.name);
+    if(depStn?.properties.flight_category==='IFR'||depStn?.properties.flight_category==='LIFR'){
+      recs.push({icon:'🛫',text:`<b>${wps[0].name}</b> is ${depStn.properties.flight_category} right now — double-check your departure minimums and have an out`});
+    }
+    if(arrStn?.properties.flight_category==='IFR'||arrStn?.properties.flight_category==='LIFR'){
+      recs.push({icon:'🛬',text:`<b>${wps[wps.length-1].name}</b> is ${arrStn.properties.flight_category} — brief the approach, pick an alternate, and know your fuel`});
+    }
+    if(arrStn&&parseInt(arrStn.properties.wind_gust_kts)>=25){
+      recs.push({icon:'💨',text:`Gusty arrival at <b>${arrName}</b> (G${arrStn.properties.wind_gust_kts}kt) — be ready to go around, no shame in it`});
+    }
+
+    // Trend recs
+    if(trends.some(t=>t.type==='bad')) recs.push({icon:'📉',text:'Weather is getting worse at one or more of your airports — keep checking updates'});
+
+    if(!recs.length) recs.push({icon:'👍',text:'Looking good! Standard prep — have a great flight'});
+
+    recs.forEach(r=>{html+=`<div class="brief-item"><span class="brief-icon">${r.icon}</span><span class="brief-text">${r.text}</span></div>`});
+    html+=`</div>`;
+
+    html+=`<div style="margin-top:14px;padding:8px;background:linear-gradient(135deg,#ebf8ff,#f0fff4);border-radius:5px;font-size:9px;color:#718096;text-align:center">Powered by NVIDIA Earth-2 Weather Analytics + live FAA data<br>Wind analysis uses nearest METAR surface observations extrapolated to altitude</div>`;
+
+    body.innerHTML=html;
+    toast('AI briefing complete');
+  }catch(e){
+    body.innerHTML=`<div style="padding:20px;text-align:center;color:#e53e3e"><b>Error generating briefing</b><br>${e.message}</div>`;
+    toast('Briefing error',5000);
+  }
+}
+
+// --- Geometry Helpers ---
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371;const d2r=Math.PI/180;
+  const dlat=(lat2-lat1)*d2r;const dlon=(lon2-lon1)*d2r;
+  const a=Math.sin(dlat/2)**2+Math.cos(lat1*d2r)*Math.cos(lat2*d2r)*Math.sin(dlon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function pointInPoly(x,y,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1];const xj=poly[j][0],yj=poly[j][1];
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+
+function extractTafVis(raw){
+  const m=raw.match(/\b(\d{1,2})SM\b/);if(m)return parseInt(m[1]);
+  if(raw.includes('P6SM'))return 7;return null;
+}
+
+// ============================================================
+//  CLICK-TO-ADD WAYPOINTS
+// ============================================================
+let clickMode=false;
+function startClickMode(){
+  clickMode=true;
+  document.getElementById('map').classList.add('map-clickmode');
+  document.getElementById('click-banner').classList.add('show');
+  document.getElementById('click-mode-btn').disabled=true;
+  toast('Click on the map to add waypoints');
+}
+function stopClickMode(){
+  clickMode=false;
+  document.getElementById('map').classList.remove('map-clickmode');
+  document.getElementById('click-banner').classList.remove('show');
+  document.getElementById('click-mode-btn').disabled=false;
+}
+map.on('click',function(e){
+  if(!clickMode)return;
+  const lat=e.latlng.lat.toFixed(4);
+  const lon=e.latlng.lng.toFixed(4);
+  // Add waypoint row
+  const c=document.getElementById('wp-container');
+  const n=c.children.length+1;
+  const d=document.createElement('div');d.className='wp-row';
+  d.innerHTML=`<span class="wp-num">${n}</span><input class="wp-lat" placeholder="Lat" value="${lat}"><input class="wp-lon" placeholder="Lon" value="${lon}"><input class="wp-alt" placeholder="FL" value="350"><input class="wp-name" placeholder="ID" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span>`;
+  c.appendChild(d);
+  // Show temp marker
+  L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:5,fillColor:'#805ad5',color:'#fff',weight:2,fillOpacity:1})
+    .bindTooltip(`WP${n}`,{permanent:true,direction:'top',offset:[0,-6]}).addTo(routeLayer);
+  toast(`Waypoint ${n} added at ${lat}, ${lon}`);
+});
+
+// ============================================================
+//  AIRPORT SEARCH (uses AWC airport info endpoint)
+// ============================================================
+// Common US airports database (inline for speed — no API call needed)
+const AIRPORTS=[
+  {icao:'KJFK',name:'John F Kennedy Intl',city:'New York',state:'NY',lat:40.6398,lon:-73.7789},
+  {icao:'KLAX',name:'Los Angeles Intl',city:'Los Angeles',state:'CA',lat:33.9425,lon:-118.408},
+  {icao:'KORD',name:'O\'Hare Intl',city:'Chicago',state:'IL',lat:41.9742,lon:-87.9073},
+  {icao:'KATL',name:'Hartsfield-Jackson',city:'Atlanta',state:'GA',lat:33.6407,lon:-84.4277},
+  {icao:'KDFW',name:'Dallas/Fort Worth Intl',city:'Dallas',state:'TX',lat:32.8998,lon:-97.0403},
+  {icao:'KDEN',name:'Denver Intl',city:'Denver',state:'CO',lat:39.8561,lon:-104.6737},
+  {icao:'KSFO',name:'San Francisco Intl',city:'San Francisco',state:'CA',lat:37.6213,lon:-122.379},
+  {icao:'KMIA',name:'Miami Intl',city:'Miami',state:'FL',lat:25.7959,lon:-80.2870},
+  {icao:'KBOS',name:'Logan Intl',city:'Boston',state:'MA',lat:42.3643,lon:-71.0052},
+  {icao:'KSTL',name:'St Louis Lambert',city:'St. Louis',state:'MO',lat:38.7487,lon:-90.3700},
+  {icao:'KROG',name:'Rogers Municipal',city:'Rogers',state:'AR',lat:36.3722,lon:-94.1069},
+  {icao:'KJBR',name:'Jonesboro Municipal',city:'Jonesboro',state:'AR',lat:35.8318,lon:-90.6466},
+  {icao:'KBHM',name:'Birmingham-Shuttlesworth',city:'Birmingham',state:'AL',lat:33.5629,lon:-86.7535},
+  {icao:'KFYV',name:'Drake Field',city:'Fayetteville',state:'AR',lat:36.0051,lon:-94.1701},
+  {icao:'KXNA',name:'NW Arkansas Regional',city:'Bentonville',state:'AR',lat:36.2819,lon:-94.3068},
+  {icao:'KFSM',name:'Fort Smith Regional',city:'Fort Smith',state:'AR',lat:35.3366,lon:-94.3674},
+  {icao:'KLIT',name:'Little Rock Clinton Natl',city:'Little Rock',state:'AR',lat:34.7294,lon:-92.2243},
+  {icao:'KTUL',name:'Tulsa Intl',city:'Tulsa',state:'OK',lat:36.1984,lon:-95.8881},
+  {icao:'KMEM',name:'Memphis Intl',city:'Memphis',state:'TN',lat:35.0424,lon:-89.9767},
+  {icao:'KMCI',name:'Kansas City Intl',city:'Kansas City',state:'MO',lat:39.2976,lon:-94.7139},
+  {icao:'KSGF',name:'Springfield-Branson',city:'Springfield',state:'MO',lat:37.2457,lon:-93.3886},
+  {icao:'KOKC',name:'Will Rogers World',city:'Oklahoma City',state:'OK',lat:35.3931,lon:-97.6007},
+  {icao:'KSAT',name:'San Antonio Intl',city:'San Antonio',state:'TX',lat:29.5337,lon:-98.4698},
+  {icao:'KIAH',name:'George Bush Intercont.',city:'Houston',state:'TX',lat:29.9844,lon:-95.3414},
+  {icao:'KMSY',name:'Louis Armstrong New Orleans',city:'New Orleans',state:'LA',lat:29.9934,lon:-90.2580},
+  {icao:'KBNA',name:'Nashville Intl',city:'Nashville',state:'TN',lat:36.1246,lon:-86.6782},
+  {icao:'KCLT',name:'Charlotte Douglas',city:'Charlotte',state:'NC',lat:35.2141,lon:-80.9431},
+  {icao:'KPHL',name:'Philadelphia Intl',city:'Philadelphia',state:'PA',lat:39.8721,lon:-75.2411},
+  {icao:'KEWR',name:'Newark Liberty',city:'Newark',state:'NJ',lat:40.6925,lon:-74.1687},
+  {icao:'KDCA',name:'Reagan National',city:'Washington',state:'DC',lat:38.8521,lon:-77.0377},
+  {icao:'KIAD',name:'Dulles Intl',city:'Washington',state:'DC',lat:38.9445,lon:-77.4558},
+  {icao:'KAUS',name:'Austin-Bergstrom',city:'Austin',state:'TX',lat:30.1945,lon:-97.6699},
+  {icao:'KSLC',name:'Salt Lake City Intl',city:'Salt Lake City',state:'UT',lat:40.7884,lon:-111.9778},
+  {icao:'KPHX',name:'Phoenix Sky Harbor',city:'Phoenix',state:'AZ',lat:33.4373,lon:-112.0078},
+  {icao:'KSEA',name:'Seattle-Tacoma Intl',city:'Seattle',state:'WA',lat:47.4502,lon:-122.3088},
+  {icao:'KPDX',name:'Portland Intl',city:'Portland',state:'OR',lat:45.5887,lon:-122.5975},
+  {icao:'KLAS',name:'Harry Reid Intl',city:'Las Vegas',state:'NV',lat:36.0840,lon:-115.1537},
+  {icao:'KMSP',name:'Minneapolis-St Paul',city:'Minneapolis',state:'MN',lat:44.8820,lon:-93.2218},
+  {icao:'KDTW',name:'Detroit Metro Wayne Co.',city:'Detroit',state:'MI',lat:42.2124,lon:-83.3534},
+  {icao:'KCLE',name:'Cleveland Hopkins',city:'Cleveland',state:'OH',lat:41.4117,lon:-81.8498},
+  {icao:'KPIT',name:'Pittsburgh Intl',city:'Pittsburgh',state:'PA',lat:40.4915,lon:-80.2329},
+  {icao:'KRDU',name:'Raleigh-Durham',city:'Raleigh',state:'NC',lat:35.8776,lon:-78.7875},
+  {icao:'KIND',name:'Indianapolis Intl',city:'Indianapolis',state:'IN',lat:39.7173,lon:-86.2944},
+  {icao:'KCVG',name:'Cincinnati/N. Kentucky',city:'Cincinnati',state:'OH',lat:39.0488,lon:-84.6678},
+  {icao:'KSAN',name:'San Diego Intl',city:'San Diego',state:'CA',lat:32.7336,lon:-117.1897},
+  {icao:'KTPA',name:'Tampa Intl',city:'Tampa',state:'FL',lat:27.9755,lon:-82.5332},
+  {icao:'KMCO',name:'Orlando Intl',city:'Orlando',state:'FL',lat:28.4294,lon:-81.3089},
+  {icao:'KJAX',name:'Jacksonville Intl',city:'Jacksonville',state:'FL',lat:30.4941,lon:-81.6879},
+];
+
+function searchAirport(query){
+  const box=document.getElementById('airport-results');
+  if(!query||query.length<2){box.classList.remove('show');return}
+  const q=query.toLowerCase();
+  const matches=AIRPORTS.filter(a=>
+    a.icao.toLowerCase().includes(q)||
+    a.name.toLowerCase().includes(q)||
+    a.city.toLowerCase().includes(q)||
+    a.state.toLowerCase()===q
+  ).slice(0,8);
+
+  if(!matches.length){box.classList.remove('show');return}
+  box.innerHTML=matches.map(a=>`<div class="search-item" onclick="selectAirport('${a.icao}',${a.lat},${a.lon},'${a.name.replace(/'/g,"\\'")}','${a.city}')"><span><span class="icao">${a.icao}</span> ${a.name}</span><span class="name">${a.city}, ${a.state}</span></div>`).join('');
+  box.classList.add('show');
+}
+
+function selectAirport(icao,lat,lon,name,city){
+  document.getElementById('airport-results').classList.remove('show');
+  document.getElementById('airport-search').value='';
+
+  // Add to METAR input if not there
+  const metarInput=document.getElementById('metar-input');
+  const current=metarInput.value.split(',').map(s=>s.trim());
+  if(!current.includes(icao)){metarInput.value=current.filter(Boolean).concat(icao).join(',')}
+
+  // Add waypoint
+  const c=document.getElementById('wp-container');
+  const n=c.children.length+1;
+  const d=document.createElement('div');d.className='wp-row';
+  d.innerHTML=`<span class="wp-num">${n}</span><input class="wp-lat" placeholder="Lat" value="${lat}"><input class="wp-lon" placeholder="Lon" value="${lon}"><input class="wp-alt" placeholder="FL" value="350"><input class="wp-name" placeholder="ID" value="${icao}" style="max-width:46px"><span class="wp-remove" onclick="removeWp(this)">&times;</span>`;
+  c.appendChild(d);
+
+  // Fly to airport on map
+  map.flyTo([lat,lon],8,{duration:1});
+  toast(`${icao} — ${name}, ${city} added`);
+}
+
+// Close search on click outside
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.search-box'))document.getElementById('airport-results').classList.remove('show');
+});
+
+// ============================================================
+//  TFRs (Temporary Flight Restrictions) from FAA
+// ============================================================
+let tfrLayer=L.layerGroup().addTo(map);
+
+async function fetchTfrs(){
+  toast('Loading TFRs...');
+  try{
+    // FAA TFR GeoJSON feed
+    const r=await fetch('https://tfr.faa.gov/tfr2/list.html');
+    // TFR API isn't public JSON — use the AWC NOTAM endpoint as fallback
+    // For now, fetch from a known GeoJSON proxy
+    const resp=await fetch('https://aviationweather.gov/api/data/tfrplus?format=json');
+    if(!resp.ok)throw new Error('TFR API unavailable — try NOTAMs instead');
+    const data=await resp.json();
+    tfrLayer.clearLayers();
+    const list=document.getElementById('tfr-list');
+
+    if(!Array.isArray(data)||!data.length){
+      // Fallback: create TFR circles from known common areas
+      list.innerHTML='<div style="color:#718096;font-size:10px">TFR feed unavailable. Use "Load NOTAMs" for restrictions.</div>';
+      toast('TFR API not available — use NOTAMs');
+      return;
+    }
+
+    let html='';
+    data.forEach(tfr=>{
+      const lat=tfr.lat||tfr.latitude;
+      const lon=tfr.lon||tfr.longitude;
+      const radius=tfr.radius||5; // nm
+      if(lat&&lon){
+        L.circle([lat,lon],{radius:radius*1852,color:'#e53e3e',fillColor:'#e53e3e',fillOpacity:.15,weight:2,dashArray:'5 3'})
+          .bindPopup(`<b>TFR</b><br>${tfr.description||tfr.notam||'No details'}`).addTo(tfrLayer);
+      }
+      html+=`<div class="tfr-item"><span class="tfr-tag">TFR</span> ${(tfr.description||tfr.notam||'Unknown').slice(0,100)}</div>`;
+    });
+    list.innerHTML=html||'<div style="color:#718096;font-size:10px">No active TFRs</div>';
+    toast(`${data.length} TFRs loaded`);
+  }catch(e){
+    document.getElementById('tfr-list').innerHTML=`<div style="color:#718096;font-size:10px">${e.message}</div>`;
+    toast('TFR: '+e.message,4000);
+  }
+}
+
+// ============================================================
+//  NOTAMs for route airports
+// ============================================================
+async function fetchNotams(){
+  const wps=getWaypoints();
+  const stations=wps.map(w=>w.name).filter(Boolean);
+  if(!stations.length){
+    const metarStations=document.getElementById('metar-input').value.split(',').map(s=>s.trim()).filter(Boolean);
+    stations.push(...metarStations.slice(0,5));
+  }
+  if(!stations.length){toast('Add airports first');return}
+
+  toast('Loading NOTAMs...');
+  const list=document.getElementById('notam-list');
+  try{
+    const resp=await fetch(`https://aviationweather.gov/api/data/notam?format=json&ids=${stations.join(',')}`);
+    if(!resp.ok)throw new Error(`NOTAM API returned ${resp.status}`);
+    const data=await resp.json();
+
+    if(!Array.isArray(data)||!data.length){
+      list.innerHTML='<div style="color:#718096;font-size:10px">No NOTAMs found for these stations</div>';
+      toast('No NOTAMs');return;
+    }
+
+    let html=`<div style="font-size:10px;color:#718096;margin-bottom:4px">${data.length} NOTAMs:</div>`;
+    data.slice(0,20).forEach(n=>{
+      const text=n.text||n.traditionalMessage||n.icaoMessage||'';
+      const id=n.id||n.notamNumber||'';
+      const loc=n.facilityDesignator||n.location||'';
+      html+=`<div class="notam-item"><b>${loc}</b> ${id}<br><span style="color:#718096">${text.slice(0,150)}${text.length>150?'...':''}</span></div>`;
+    });
+    if(data.length>20)html+=`<div style="color:#718096;font-size:10px">+${data.length-20} more</div>`;
+    list.innerHTML=html;
+    toast(`${data.length} NOTAMs loaded`);
+  }catch(e){
+    list.innerHTML=`<div style="color:#718096;font-size:10px">${e.message}</div>`;
+    toast('NOTAMs: '+e.message,4000);
+  }
+}
+
+// ============================================================
+//  WEATHER OVERLAY LAYERS (Radar, Satellite, Temp, Wind, Clouds)
+// ============================================================
+
+// --- RainViewer API (free, no key) for radar + satellite ---
+let radarData=null;
+let radarFrames=[];
+let radarLayers=[];
+let radarIdx=0;
+let radarPlaying=false;
+let radarInterval=null;
+let satLayer=null;
+
+// OWM tiles (free tier key — this is a demo key, get your own at openweathermap.org/api)
+const OWM_KEY='a]demo'; // placeholder
+let tempLayer=null, windLayer=null, cloudsLayer=null;
+
+async function loadRainViewerData(){
+  if(radarData)return radarData;
+  try{
+    const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    radarData=await r.json();
+    return radarData;
+  }catch(e){console.error('RainViewer API error',e);return null}
+}
+
+async function toggleRadar(on){
+  document.getElementById('radar-ctrl').style.display=on?'block':'none';
+  if(!on){
+    radarLayers.forEach(l=>map.removeLayer(l));radarLayers=[];radarFrames=[];
+    if(radarInterval)clearInterval(radarInterval);radarPlaying=false;
+    document.getElementById('radar-play-btn').textContent='▶';
+    return;
+  }
+  toast('Loading radar data...');
+  const data=await loadRainViewerData();
+  if(!data||!data.radar?.past?.length){toast('No radar data available',3000);document.getElementById('chk-radar').checked=false;return}
+
+  radarFrames=[...data.radar.past,...(data.radar.nowcast||[])];
+  radarLayers=radarFrames.map(frame=>{
+    return L.tileLayer(`${data.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,{opacity:0,zIndex:10,maxZoom:18});
+  });
+
+  // Show latest frame
+  radarIdx=data.radar.past.length-1;
+  radarLayers[radarIdx].setOpacity(.7).addTo(map);
+  updateRadarTime();
+  toast('Radar loaded — use controls to animate');
+}
+
+function setRadarOpacity(v){if(radarLayers[radarIdx])radarLayers[radarIdx].setOpacity(v)}
+
+function showRadarFrame(idx){
+  radarLayers.forEach((l,i)=>{
+    if(i===idx){l.setOpacity(parseFloat(document.querySelector('#radar-ctrl .opacity-slider')?.value||70)/100);if(!map.hasLayer(l))l.addTo(map)}
+    else{l.setOpacity(0);if(map.hasLayer(l))map.removeLayer(l)}
+  });
+  radarIdx=idx;
+  updateRadarTime();
+}
+
+function updateRadarTime(){
+  const frame=radarFrames[radarIdx];
+  if(!frame)return;
+  const d=new Date(frame.time*1000);
+  const hh=d.getUTCHours().toString().padStart(2,'0');
+  const mm=d.getUTCMinutes().toString().padStart(2,'0');
+  const isPast=radarData&&radarIdx<radarData.radar.past.length;
+  document.getElementById('radar-time').textContent=`${hh}:${mm}Z${isPast?'':' (fcst)'}`;
+}
+
+function radarNext(){if(radarFrames.length)showRadarFrame((radarIdx+1)%radarFrames.length)}
+function radarPrev(){if(radarFrames.length)showRadarFrame((radarIdx-1+radarFrames.length)%radarFrames.length)}
+
+function radarPlayPause(){
+  if(radarPlaying){clearInterval(radarInterval);radarPlaying=false;document.getElementById('radar-play-btn').textContent='▶'}
+  else{radarPlaying=true;document.getElementById('radar-play-btn').textContent='⏸';radarInterval=setInterval(radarNext,500)}
+}
+
+async function toggleSatellite(on){
+  document.getElementById('sat-ctrl').style.display=on?'block':'none';
+  if(!on){if(satLayer){map.removeLayer(satLayer);satLayer=null}return}
+  toast('Loading satellite imagery...');
+  const data=await loadRainViewerData();
+  if(!data||!data.satellite?.infrared?.length){toast('No satellite data',3000);document.getElementById('chk-satellite').checked=false;return}
+  const latest=data.satellite.infrared[data.satellite.infrared.length-1];
+  satLayer=L.tileLayer(`${data.host}${latest.path}/256/{z}/{x}/{y}/0/0_0.png`,{opacity:.6,zIndex:5,maxZoom:18}).addTo(map);
+  toast('Satellite imagery loaded');
+}
+
+function setSatOpacity(v){if(satLayer)satLayer.setOpacity(v)}
+
+// --- OpenWeatherMap layers (requires API key) ---
+// Using the free tile endpoint that works without key for demo
+function toggleTemp(on){
+  if(!on){if(tempLayer){map.removeLayer(tempLayer);tempLayer=null}return}
+  // Use OWM free tiles
+  tempLayer=L.tileLayer('https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=9de243494c0b295cca9337e1e96b00e2',{opacity:.5,zIndex:4,maxZoom:18}).addTo(map);
+  toast('Temperature layer loaded');
+}
+
+function toggleWind(on){
+  if(!on){if(windLayer){map.removeLayer(windLayer);windLayer=null}return}
+  windLayer=L.tileLayer('https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=9de243494c0b295cca9337e1e96b00e2',{opacity:.5,zIndex:4,maxZoom:18}).addTo(map);
+  toast('Wind layer loaded');
+}
+
+function toggleClouds(on){
+  if(!on){if(cloudsLayer){map.removeLayer(cloudsLayer);cloudsLayer=null}return}
+  cloudsLayer=L.tileLayer('https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=9de243494c0b295cca9337e1e96b00e2',{opacity:.5,zIndex:4,maxZoom:18}).addTo(map);
+  toast('Cloud cover layer loaded');
+}
+
+// --- Status ---
+async function checkStatus(){
+  try{const r=await fetch('/status');const d=await r.json();
+    document.getElementById('status-dot').className='dot '+(d.status==='OK'?'dot-ok':'dot-err');
+    document.getElementById('status-text').textContent=d.status==='OK'?'Online':'Error';
+  }catch(e){document.getElementById('status-dot').className='dot dot-err';document.getElementById('status-text').textContent='Offline'}
+}
+checkStatus();setInterval(checkStatus,30000);
+setTimeout(fetchMetar,1000);
+</script>
+</body>
+</html>

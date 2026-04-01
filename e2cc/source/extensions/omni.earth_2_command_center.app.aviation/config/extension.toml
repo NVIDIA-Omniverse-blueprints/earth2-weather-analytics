@@ -1,0 +1,12 @@
+[package]
+title = "Earth-2 Command Center Aviation Visualization"
+description = "Aviation features (flight routes, airport markers) for the E2CC globe view"
+version = "1.0.0"
+category = "Application"
+
+[dependencies]
+"omni.earth_2_command_center.app.core" = {}
+"omni.earth_2_command_center.app.globe_view" = {}
+
+[[python.module]]
+name = "omni.earth_2_command_center.app.aviation"

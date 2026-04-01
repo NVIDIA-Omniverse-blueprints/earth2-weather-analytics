@@ -8,11 +8,5 @@
 # without an express license agreement from NVIDIA CORPORATION or
 # its affiliates is strictly prohibited.
 
-from .gfs import GFSPipeline  # noqa: F401
-from .era5 import ERA5Pipeline  # noqa: F401
-from .fcn import FourCastNetPipeline  # noqa: F401
-from .hrrr import HRRRPipeline  # noqa: F401
-from .esri_topo import ESRITopoPipeline  # noqa: F401
-from .aviation_weather import AviationWeatherPipeline  # noqa: F401
-from .flight_route import FlightRoutePipeline  # noqa: F401
-from .metar_stations import MetarStationsPipeline, PirepPipeline, SigmetPipeline  # noqa: F401
+from .flight_route_delegate import FlightRouteDelegate  # noqa: F401
+from .airport_marker_delegate import AirportMarkerDelegate  # noqa: F401

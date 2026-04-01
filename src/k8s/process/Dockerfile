@@ -63,6 +63,7 @@ RUN mkdir -p /app/k8s/common
 
 COPY ./src/k8s/process/*.py /app/k8s/process
 COPY ./src/k8s/process/run.sh /app/k8s/process
+COPY ./src/k8s/process/static /app/k8s/process/static
 COPY ./src/k8s/common/log_conf*.yml /app/k8s/common
 
 COPY ./src/dfm /app/dfm

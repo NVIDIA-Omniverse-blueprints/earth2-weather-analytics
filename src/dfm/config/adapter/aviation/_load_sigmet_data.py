@@ -8,11 +8,18 @@
 # without an express license agreement from NVIDIA CORPORATION or
 # its affiliates is strictly prohibited.
 
-from .gfs import GFSPipeline  # noqa: F401
-from .era5 import ERA5Pipeline  # noqa: F401
-from .fcn import FourCastNetPipeline  # noqa: F401
-from .hrrr import HRRRPipeline  # noqa: F401
-from .esri_topo import ESRITopoPipeline  # noqa: F401
-from .aviation_weather import AviationWeatherPipeline  # noqa: F401
-from .flight_route import FlightRoutePipeline  # noqa: F401
-from .metar_stations import MetarStationsPipeline, PirepPipeline, SigmetPipeline  # noqa: F401
+"""Configuration for Aviation Weather Center SIGMET/AIRMET Data Loader."""
+
+from typing import Literal
+from .._adapter_config import AdapterConfig
+
+
+class LoadSigmetData(AdapterConfig, frozen=True):
+    """Config for LoadSigmetData Adapter."""
+
+    adapter_class: Literal["adapter.aviation.LoadSigmetData"] = (
+        "adapter.aviation.LoadSigmetData"
+    )
+    awc_url: str = "https://aviationweather.gov/api/data/airsigmet"
+    request_timeout: int = 30
+    request_retries: int = 3

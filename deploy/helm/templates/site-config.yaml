@@ -97,6 +97,21 @@ data:
               adapter_class: adapter.xarray.RenderUint8ToImages
               format: jpeg
               quality: 90
+        awc:
+            provider_class: provider.BasicProvider
+            description: Aviation Weather Center data products (METAR, TAF, PIREP, SIGMET/AIRMET)
+            cache_fsspec_conf:
+              protocol: file
+              base_url: "/cache/awc"
+            interface:
+              dfm.api.aviation.LoadMetarData:
+                adapter_class: adapter.aviation.LoadMetarData
+              dfm.api.aviation.LoadTafData:
+                adapter_class: adapter.aviation.LoadTafData
+              dfm.api.aviation.LoadPirepData:
+                adapter_class: adapter.aviation.LoadPirepData
+              dfm.api.aviation.LoadSigmetData:
+                adapter_class: adapter.aviation.LoadSigmetData
         dfm:
             provider_class: provider.BasicProvider
             description: The default provider for most operations
@@ -109,6 +124,12 @@ data:
               dfm.api.xarray.AveragePointwise: dfm.service.execute.adapter.xarray.AveragePointwise
               dfm.api.xarray.ConvertToUint8: dfm.service.execute.adapter.xarray.ConvertToUint8
               dfm.api.xarray.VariableNorm: dfm.service.execute.adapter.xarray.VariableNorm
+              dfm.api.aviation.ComputeWindShear: dfm.service.execute.adapter.aviation.ComputeWindShear
+              dfm.api.aviation.ComputeEllrodIndex: dfm.service.execute.adapter.aviation.ComputeEllrodIndex
+              dfm.api.aviation.ComputeIcingProbability: dfm.service.execute.adapter.aviation.ComputeIcingProbability
+              dfm.api.aviation.ComputeCrosswind: dfm.service.execute.adapter.aviation.ComputeCrosswind
+              dfm.api.aviation.ExtractRouteWeather: dfm.service.execute.adapter.aviation.ExtractRouteWeather
+              dfm.api.aviation.ScoreRouteHazards: dfm.service.execute.adapter.aviation.ScoreRouteHazards
         greetme:
             provider_class: provider.BasicProvider
             description: The default provider
