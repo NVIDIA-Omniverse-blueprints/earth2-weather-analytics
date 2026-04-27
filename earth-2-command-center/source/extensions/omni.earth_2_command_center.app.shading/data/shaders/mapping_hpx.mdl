@@ -1,0 +1,170 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+import ::anno::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+import ::debug::*;
+
+// local imports
+import common::*;
+import utils::*;
+import mapping::*;
+
+int2 get_hpx_lookup_pos(float3 xyf,
+        uniform texture_2d tex0,
+		uniform bool rotate = false,
+		uniform bool flip_u = false,
+		uniform bool flip_v = false
+		) {
+	uniform int nside = tex::width(tex0);
+
+	float2 uv = rotate ?
+		float2(1-xyf.y, xyf.x) :
+		float2(xyf.x, xyf.y);
+	if (flip_u)
+		uv.x = 1.0f-uv.x;
+	if (flip_v)
+		uv.y = 1.0f-uv.y;
+	int2 coords = int2(int(nside*uv.x), int(nside*uv.y));
+
+    return coords;
+}
+
+float3 get_hpx_xyf_coords() {
+	float3 sphere_pos = math::normalize(
+			state::transform_point(state::coordinate_internal, state::coordinate_world, state::position()));
+
+	float z = sphere_pos.z;
+	float za = math::abs(z);
+	float phi = utils::wrap_to_range(math::atan2(sphere_pos.y, sphere_pos.x), 0.0f, 2.0f*math::PI);
+
+	// horizontal coord; 0->left-most vertex of first base-pixel
+	float h = 2.0f*phi/math::PI;
+
+	// equatorial area
+	if (za <= (2.0f/3.0f)) {
+		// +0.5f -> shift horizontal origin to left-vertex of base-pixel index 4 (first of equatorial area)
+		h += 0.5f;
+
+		// vertical coord:
+		// +1/2 -> upper vertex of base-pixels of equatorial area
+		// -1/2 -> lower vertex of base-pixels of equatorial area
+		float v = 0.75f*z;
+
+		// NOTE: not really y, since the origin is the left-most vertex and axis points right-downward
+		float x = h + v;
+		float y = h - v;
+
+		int xi = int(x);
+		int yi = int(y);
+		x = math::frac(x);
+		y = 1.0f-math::frac(y);
+
+		int f = (xi == yi) ?
+			yi|4 : // bitwise-or is better than +4 as it handles the yi=4 case
+			(xi > yi) ? yi : xi+8;
+
+		return float3(x,y,f);
+	}
+	// polar caps
+	else {
+		// horizontal coord
+		int f = int(h) & 3; // clamp to [0,3]
+		h = math::frac(h);
+		//float tmp = math::sqrt(1.0f-z*z)/math::sqrt((1.f+za)*(1.f/3.f));
+		float tmp = math::sqrt(3.0f * (1.0f-za));
+
+		float x = (1.0f-h)*tmp;
+		float y = h*tmp;
+
+		return z >= 0 ?
+			float3(1.0f-x, 1.0f-y, f) :
+			float3(y, x, f+8);
+	}
+}
+
+
+export color lookup_hpx_texture(
+    uniform texture_2d tex0,
+    uniform texture_2d tex1,
+    uniform texture_2d tex2,
+    uniform texture_2d tex3,
+    uniform texture_2d tex4,
+    uniform texture_2d tex5,
+    uniform texture_2d tex6,
+    uniform texture_2d tex7,
+    uniform texture_2d tex8,
+    uniform texture_2d tex9,
+    uniform texture_2d tex10,
+    uniform texture_2d tex11,
+    uniform bool rotate=false,
+    uniform bool flip_u=false, uniform bool flip_v=false)
+{
+    float3 xyf = get_hpx_xyf_coords();
+
+    int2 lookup_pos = get_hpx_lookup_pos(xyf, tex0, rotate, flip_u, flip_v);
+    uniform texture_2d[12] tex(
+            tex0, tex1, tex2, tex3,
+            tex4, tex5, tex6, tex7,
+            tex8, tex9, tex10, tex11);
+
+    return mapping::texel_multi_texture(lookup_pos, int(xyf[2]), tex);
+}
+
+export float lookup_hpx_texture_mono(
+    uniform texture_2d tex0,
+    uniform texture_2d tex1,
+    uniform texture_2d tex2,
+    uniform texture_2d tex3,
+    uniform texture_2d tex4,
+    uniform texture_2d tex5,
+    uniform texture_2d tex6,
+    uniform texture_2d tex7,
+    uniform texture_2d tex8,
+    uniform texture_2d tex9,
+    uniform texture_2d tex10,
+    uniform texture_2d tex11,
+    uniform bool rotate=false,
+    uniform bool flip_u=false, uniform bool flip_v=false)
+{
+    float3 xyf = get_hpx_xyf_coords();
+
+    int2 lookup_pos = get_hpx_lookup_pos(xyf, tex0, rotate, flip_u, flip_v);
+    uniform texture_2d[12] tex(
+            tex0, tex1, tex2, tex3,
+            tex4, tex5, tex6, tex7,
+            tex8, tex9, tex10, tex11);
+
+    return mapping::texel_multi_texture_mono(lookup_pos, int(xyf[2]), tex);
+}
+

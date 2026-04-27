@@ -1,0 +1,76 @@
+[package]
+title = "Earth-2 Command Center OVC"
+
+[dependencies]
+"omni.earth_2_command_center.app.base" = {}
+
+[settings.app.exts]
+folders.'++' = ["${app}/../exts", "${app}/../extscache/", "${app}/../apps"]
+
+[dependencies]
+"omni.kit.streamsdk.plugins" = {version = "6.0.0", exact = true}
+#"omni.kit.livestream.webrtc" = {}
+
+[settings]
+# Disable the realm.timeout.
+realm.timeout = 0
+privacy.userId = "${USER_ID}"
+rendergraph.maxFramesInFlight = 2 # Reduce click-to-photon
+# TODO: disabling aftermath since it causes crash (?)
+# renderer.debug.aftermath.enabled = true
+plugins."carb.tasking.plugin".threadCount = 16
+
+# Tweak RTX settings
+rtx.verifyDriverVersion.enabled = false
+rtx.post.aa.op = 3
+rtx.post.dlss.execMode = 1  # DLSS mode: balanced
+
+[settings.app.window]
+title = "Earth-2 Command Center OVC"
+
+[settings.app]
+# Inform certain extensions that they are running on a cloud deployment of the application
+ovc_deployment = true
+
+# Enable application streaming
+livestream.enabled = true
+# Allows the client application to determine streaming resolution.
+livestream.allowResize = true
+livestream.webrtcEtli = true
+livestream.logLevel = "error"
+livestream.proto = "ws"
+
+# Scale the application window to match the size & aspect ratio of the monitor.
+window.scaleToMonitor = true
+
+# Set renderer resolution
+renderer.resolution.width = 2560
+renderer.resolution.height = 1440
+
+[settings.log]
+file = ".local/app/log/kit.log"
+fileLogLevel = "info"
+channels."*" = "info"
+channels."omni.client.plugin" = "verbose"
+enableStandardStreamOutput = true
+outputStreamLevel = "info"
+
+
+########################################################################################################################
+# BEGIN GENERATED PART (Remove from 'BEGIN' to 'END' to regenerate)
+########################################################################################################################
+
+# Kit SDK Version: 109.0.2+production.256998.bb24931b.gl
+
+# Exact Version dependencies:
+# 	omni.kit.streamsdk.plugins-6.0.0
+
+# Version lock for all dependencies:
+[settings.app.exts]
+enabled = [
+	"hpcvis.dynamictexture-1.0.1",
+]
+
+########################################################################################################################
+# END GENERATED PART
+########################################################################################################################

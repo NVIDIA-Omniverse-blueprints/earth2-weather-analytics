@@ -1,0 +1,6 @@
+federations:
+  earth2:
+    config_path: configs/federation.dfm.yaml
+    federation_dir: federation
+    project_path: configs/project.yaml
+

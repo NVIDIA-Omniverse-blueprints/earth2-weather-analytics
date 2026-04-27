@@ -1,0 +1,57 @@
+[package]
+# Semantic Versionning is used: https://semver.org/
+version = "0.1.1"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "DFM Connector"
+description = "Integrates Earth-2 Command Center with Data Federation Mesh"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# One of categories for UI.
+category = "example"
+
+# Keywords for the extension
+keywords = ["kit", "example"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+[dependencies]
+"omni.kit.async_engine" = {}
+
+# Main python module this extension provides
+[[python.module]]
+name = "omni.earth_2_command_center.app.dfm"
+
+### add pip_prebundle to sys.path (https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/guide/using_pip_packages.html#build-time-installation-using-repo-build)
+[[python.module]]
+path = "pip_prebundle"
+
+[settings]
+# Data Federation Engine configuration
+# this is a global setting because it determines the spawn method for multiprocessing for now
+exts."omni.earth_2_command_center.app.dfm".dfm.deployment = "flare"
+
+[[test]]
+args = [
+    # disable pcielink check to avoid NVML_ERROR_NOT_SUPPORTED errors when running
+    # tests on vGPU runners
+    "--/validate/pcielink/enabled=false",
+]
+
+[[test]]
+name = "startup"
+args = [
+    # disable pcielink check to avoid NVML_ERROR_NOT_SUPPORTED errors when running
+    # tests on vGPU runners
+    "--/validate/pcielink/enabled=false",
+]
+

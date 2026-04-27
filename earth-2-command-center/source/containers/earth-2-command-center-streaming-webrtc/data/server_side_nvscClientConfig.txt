@@ -1,0 +1,2 @@
+video.packetSize:1088
+bwe.packetLossHighThresholdx100:2500

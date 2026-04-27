@@ -1,0 +1,269 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+import ::anno::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+import ::debug::*;
+
+// local imports
+import common::*;
+import utils::*;
+import mapping::*;
+
+// ========================================
+// Shaders
+// ========================================
+float2 get_latlong_lookup_uvs(
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0))
+{
+  float2 latlong = mapping::get_shifted_latlong(mapping::get_latlong_coords(), longitudinal_offset);
+
+  float2 lookup_uv;
+  if (use_affine)
+  {
+    uniform auto A = float2x3(
+        affine_row1,
+        affine_row2);
+    lookup_uv = mapping::apply_affine(latlong, A);
+  }
+  else
+  {
+    lookup_uv = mapping::latlong_to_uv(latlong);
+  }
+
+  lookup_uv = mapping::apply_flip(lookup_uv, flip_u, flip_v);
+
+  return lookup_uv;
+}
+
+export color lookup_latlong_texture(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_color(texture, lookup_uv,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_repeat,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_clamp)*mask;
+  else
+    return color(mask);
+}
+
+export float lookup_latlong_texture_mono(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_float(texture, lookup_uv,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_repeat,
+        use_affine ? tex::wrap_mirrored_repeat : tex::wrap_clamp)*mask;
+  else
+    return float(mask);
+}
+
+// ========================================
+// LatLong Split Textures
+// ========================================
+color lookup_latlong_splits(
+    float2 lookup_uv,
+    uniform texture_2d[<N>] textures,
+    uniform int split_u, uniform int split_v)
+{
+  float3 split_lookup = mapping::split_uv(lookup_uv, split_u, split_v);
+  float2 split_lookup_uv = float2(split_lookup[0], split_lookup[1]);
+  int texture_idx = int(split_lookup[2]);
+  return mapping::lookup_multi_texture(split_lookup_uv, texture_idx, textures);
+}
+
+float lookup_latlong_splits_mono(
+    float2 lookup_uv,
+    uniform texture_2d[<N>] textures,
+    uniform int split_u, uniform int split_v)
+{
+  float3 split_lookup = mapping::split_uv(lookup_uv, split_u, split_v);
+  float2 split_lookup_uv = float2(split_lookup[0], split_lookup[1]);
+  int texture_idx = int(split_lookup[2]);
+  return mapping::lookup_multi_texture_mono(split_lookup_uv, texture_idx, textures);
+}
+
+export color lookup_latlong_texture_split_4_2(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1, uniform texture_2d texture_0_2, uniform texture_2d texture_0_3,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1, uniform texture_2d texture_1_2, uniform texture_2d texture_1_3,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  uniform texture_2d[8] textures = texture_2d[](
+      texture_0_0, texture_0_1, texture_0_2, texture_0_3,
+      texture_1_0, texture_1_1, texture_1_2, texture_1_3);
+  return lookup_latlong_splits(lookup_uv, textures, 4, 2) * mask;
+}
+
+export color lookup_latlong_texture_split_2_1(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  uniform texture_2d[2] textures = texture_2d[](texture_0_0, texture_0_1);
+  return lookup_latlong_splits(lookup_uv, textures, 2, 1) * mask;
+}
+
+export color lookup_latlong_texture_split_2_2(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  uniform texture_2d[4] textures = texture_2d[](
+      texture_0_0, texture_0_1,
+      texture_1_0, texture_1_1);
+  return lookup_latlong_splits(lookup_uv, textures, 2, 2) * mask;
+}
+
+export float lookup_latlong_texture_split_4_2_mono(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1, uniform texture_2d texture_0_2, uniform texture_2d texture_0_3,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1, uniform texture_2d texture_1_2, uniform texture_2d texture_1_3,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  uniform texture_2d[8] textures = texture_2d[](
+      texture_0_0, texture_0_1, texture_0_2, texture_0_3,
+      texture_1_0, texture_1_1, texture_1_2, texture_1_3);
+  return lookup_latlong_splits_mono(lookup_uv, textures, 4, 2) * mask;
+}
+
+export float lookup_latlong_texture_split_2_1_mono(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  uniform texture_2d[2] textures = texture_2d[](texture_0_0, texture_0_1);
+  return lookup_latlong_splits_mono(lookup_uv, textures, 2, 1) * mask;
+}
+
+export float lookup_latlong_texture_split_2_2_mono(
+    uniform texture_2d texture_0_0, uniform texture_2d texture_0_1,
+    uniform texture_2d texture_1_0, uniform texture_2d texture_1_1,
+    uniform float longitudinal_offset = 0.0f,
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool use_affine = false,
+    uniform float3 affine_row1 = float3(1,0,0),
+    uniform float3 affine_row2 = float3(0,1,0),
+    uniform bool black_outside = true)
+{
+  float2 lookup_uv = get_latlong_lookup_uvs(
+      longitudinal_offset,
+      flip_u, flip_v,
+      use_affine, affine_row1, affine_row2);
+  bool mask = (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  uniform texture_2d[4] textures = texture_2d[](
+      texture_0_0, texture_0_1,
+      texture_1_0, texture_1_1);
+  return lookup_latlong_splits_mono(lookup_uv, textures, 2, 2) * mask;
+}
+

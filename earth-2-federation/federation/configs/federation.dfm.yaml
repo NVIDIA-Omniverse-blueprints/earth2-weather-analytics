@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+#
+# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
+# property and proprietary rights in and to this material, related
+# documentation and any modifications thereto. Any use, reproduction,
+# disclosure or distribution of this material and related documentation
+# without an express license agreement from NVIDIA CORPORATION or
+# its affiliates is strictly prohibited.
+
+dfm: 1.0.0
+info:
+  api-version: 1.0.0
+  code-package: federation
+  description: "A federation for the Earth-2 project"
+provision: {}
+operations:
+  # Earth-2 data loading + xarray operations (refs merged from nv_dfm_lib_weather configs)
+  $ref:
+    # Data loading operations
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/cmip6.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/ecmwf_era5.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/gfs_era5.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/hrrr_era5.yaml#/operation"
+    # Xarray operations
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/xarray/convert_to_uint8.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/xarray/render_uint8_to_images.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/xarray/variable_norm.yaml#/operation"
+    # cBottle operations
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/data_gen.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/infilling.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/super_resolution.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/tc_guidance.yaml#/operation"
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/video.yaml#/operation"
+    # SFNO operations
+    - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/sfno/sfno_prognostic.yaml#/operation"
+sites:
+  server:
+    info:
+      description: "The central Earth-2 server"
+  client1:
+    info:
+      description: "The client site 1"
+    impl: nv_dfm_lib_weather.site.ModelCacheSite
+    send_cost:
+      homesite:
+        fixed_time: 1
+        bandwidth: 1
+    interface:
+      $ref:
+        # Data loading interfaces
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/cmip6.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/ecmwf_era5.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/gfs_era5.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/load_data/hrrr_era5.yaml#/interface"
+        # Xarray interfaces
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/xarray/convert_to_uint8.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/xarray/render_uint8_to_images.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/xarray/variable_norm.yaml#/interface"
+        # cBottle interfaces
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/data_gen.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/infilling.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/super_resolution.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/tc_guidance.yaml#/interface"
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/cbottle/video.yaml#/interface"
+        # SFNO interfaces
+        - "./.venv/lib/python3.12/site-packages/nv_dfm_lib_weather/configs/sfno/sfno_prognostic.yaml#/interface"
+  homesite:
+    info:
+      description: "The client application site"
+    send_cost:
+      client1:
+        fixed_time: 1
+        bandwidth: 1

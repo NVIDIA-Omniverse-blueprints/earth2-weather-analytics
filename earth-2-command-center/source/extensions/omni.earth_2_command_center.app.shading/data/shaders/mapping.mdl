@@ -1,0 +1,225 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+import ::anno::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+import ::debug::*;
+
+// local imports
+import common::*;
+import utils::*;
+
+// ========================================
+// Enums
+// ========================================
+export enum projection_preset
+{
+  projection_preset_invalid = 0
+  [[
+    anno::display_name("Invalid")
+  ]],
+  projection_preset_latlong
+  [[
+    anno::display_name("Lat/Lon")
+  ]],
+  projection_preset_diamond
+  [[
+    anno::display_name("Diamond")
+  ]],
+  projection_preset_goes
+  [[
+    anno::display_name("GOES")
+  ]],
+  projection_preset_hpx
+  [[
+    anno::display_name("HEALpix")
+  ]]
+};
+
+export enum channel_select_preset
+{
+  channel_select_R = 0
+  [[
+    anno::display_name("R")
+  ]],
+  channel_select_G
+  [[
+    anno::display_name("G")
+  ]],
+  channel_select_B
+  [[
+    anno::display_name("B")
+  ]],
+  channel_select_RGB
+  [[
+    anno::display_name("RGB")
+  ]]
+};
+
+// ========================================
+// Helper Functions
+// ========================================
+// TODO: we need to differentiate between geocentric and geodesic coords
+export float2 get_latlong_coords()
+{
+  float3 sphere_pos = math::normalize(
+     state::transform_point(state::coordinate_internal, state::coordinate_world, state::position()));
+
+  float latitude = math::asin(sphere_pos.z);
+  float longitude = utils::wrap_to_range(math::atan2(sphere_pos.y, sphere_pos.x), 0.0f, 2.0f*math::PI);
+
+  return float2(latitude, longitude);
+}
+
+export float2 latlong_to_uv(float2 latlong)
+{
+  //latlong = float2(
+  //    utils::wrap_to_range(latlong[0], -math::PI*0.5f, math::PI*0.5f),
+  //    utils::wrap_to_range(latlong[1], 0.0f, 2.0f*math::PI));
+
+  return float2(
+      latlong[1]/(2.0f*math::PI),
+      (latlong[0]+math::PI*0.5f)/math::PI);
+}
+
+export float2 get_shifted_latlong(float2 latlong, uniform float longitudinal_offset = 0.0f)
+{
+  return float2(
+      latlong[0],
+      utils::wrap_to_range(latlong[1] + longitudinal_offset, 0.0f, 2.0f*math::PI));
+}
+
+export float2 apply_flip(float2 uv, uniform bool flip_u, uniform bool flip_v)
+{
+  return float2(
+      flip_u ? 1.0f-uv[0] : uv[0],
+      flip_v ? 1.0f-uv[1] : uv[1]);
+}
+
+export float2 apply_affine(float2 latlong, uniform float2x3 A)
+{
+  //auto result = A*float3(latlong[1], latlong[0], 1.0f);
+  auto result = float3(latlong[1], latlong[0], 1.0f)*A;
+  return float2(result[0], result[1]);
+}
+
+export bool is_outside(float2 uv)
+{
+  return (uv[0] < 0.0f || uv[0] > 1.0f) || (uv[1] < 0.0f || uv[1] > 1.0f);
+}
+
+// ========================================
+// Latlong Splits
+// ========================================
+export float3 split_uv(float2 uv, uniform int split_u, uniform int split_v)
+{
+  return float3(
+     utils::wrap_to_range(uv[0]*split_u, 0.0f, 1.0f),
+     utils::wrap_to_range(uv[1]*split_v, 0.0f, 1.0f),
+     math::floor((1.0f-uv[1])*split_v)*split_u + math::floor(uv[0]*split_u)
+     );
+}
+
+export color lookup_multi_texture(
+    float2 uv,
+    int texture_idx,
+    uniform texture_2d[<N>] textures
+   )
+{
+  color result = color(0);
+  for (int i=0; i<N; i++) {
+    if (texture_idx == i) {
+      if (tex::texture_isvalid(textures[i]))
+        result += tex::lookup_color(textures[i], uv,
+            tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+      else
+        result = color(1);
+    }
+  }
+  return result;
+}
+
+export float lookup_multi_texture_mono(
+    float2 uv,
+    int texture_idx,
+    uniform texture_2d[<N>] textures
+   )
+{
+  float result = float(0);
+  for (int i=0; i<N; i++) {
+    if (texture_idx == i) {
+      if (tex::texture_isvalid(textures[i]))
+        result += tex::lookup_float(textures[i], uv,
+            tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+      else
+        result = 1.0f;
+    }
+  }
+  return result;
+}
+
+export color texel_multi_texture(
+    int2 pos,
+    int texture_idx,
+    uniform texture_2d[<N>] textures
+   )
+{
+  color result = color(0);
+  for (int i=0; i<N; i++) {
+    if (texture_idx == i) {
+      if (tex::texture_isvalid(textures[i]))
+        result += tex::texel_color(textures[i], pos);
+      else
+        result = color(1);
+    }
+  }
+  return result;
+}
+
+export float texel_multi_texture_mono(
+    int2 pos,
+    int texture_idx,
+    uniform texture_2d[<N>] textures
+   )
+{
+  float result = float(0);
+  for (int i=0; i<N; i++) {
+    if (texture_idx == i) {
+      if (tex::texture_isvalid(textures[i]))
+        result += tex::texel_float(textures[i], pos);
+      else
+        result = 1.0f;
+    }
+  }
+  return result;
+}

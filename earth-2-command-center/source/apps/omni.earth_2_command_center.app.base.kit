@@ -1,0 +1,148 @@
+[package]
+title = "Earth-2 Command Center Base"
+description = """The Earth-2 Command Center allows the visualization of global and large-scale geospatial datasets, including climate data. Using the Data Federation Service, it's possible to launch simulations, query inference servers and pull remote datasets."""
+version = "1.0.0"
+keywords = ["app"]
+
+[dependencies]
+# Create Kit UI Based applications
+"omni.kit.renderer.core" = {}
+"omni.kit.uiapp" = {}
+"omni.kit.window.extensions" = {}
+"omni.kit.window.script_editor" = {}
+"omni.kit.window.splash" = {order = -5000}
+#"omni.kit.window.stage" = {}
+
+# This is your application setup Extensions
+# Where you layout the various Window, arrange you menu etc
+# order = 1000 make it run last
+"omni.earth_2_command_center.app.core" = { version = ">1.1.0" }
+"omni.earth_2_command_center.app.setup" = { order = 1000 }
+"omni.earth_2_command_center.app.resources" = {}
+"omni.earth_2_command_center.app.window.feature_properties" = {}
+"omni.earth_2_command_center.app.index" = {}
+"omni.earth_2_command_center.app.continents_outline" = {order = 3000}
+"omni.earth_2_command_center.app.test_sequence" = {}
+
+# Viewport Extensions
+#############################################
+# The Main Viewport Window
+"omni.earth_2_command_center.app.globe_view" = {}
+
+# Enable RTX Renderer for your viewport
+#"omni.hydra.rtx" = {}
+
+# This is a temporary workaround: https://omniverse-jirasw.nvidia.com/browse/OM-114219
+"omni.rtx.shadercache.vulkan" = {order = -1000}
+
+# show when the RTX engine finished loading
+"omni.kit.viewport.ready" = {}
+
+[settings.app.window]
+title = "Earth-2 Command Center"
+fullscreen = false
+
+# Width and Height of your Main Window at startup
+width = 1700
+height = 900
+# start with a centered window
+x = -1
+y = -1
+
+# carb seems to expect some windows-specific format, not a png. Disabling to get rid of the error message.
+# iconPath = "${omni.earth_2_command_center.app.resources}/data/icon.png"
+iconPath = ""
+
+# this is a custom setting used in our app setup to choose the Layout
+[settings.app.layout]
+name = "basic"
+
+[settings]
+
+# Basic Kit App
+################################
+# this is used in our setup file to display some Version to the user in the title bar
+app.titleVersion = "1.0.0"
+
+# Turn on VSync by default
+app.vsync = true
+
+# we create our own usd during startup
+app.content.emptyStageOnStart = false
+
+# Name the Viewport
+exts."omni.kit.viewport.window".startup.windowName = "Globe View"
+exts."omni.kit.viewport.window".startup.dockTabInvisible = true
+
+# Main Menu Bar Visibility
+app.mainMenuBar.visible = true
+# Visibility of Globe View UI Elements
+exts."omni.earth_2_command_center.app.globe_view".feature.visible = true
+exts."omni.earth_2_command_center.app.globe_view".timeline.visible = true
+exts."omni.earth_2_command_center.app.globe_view".toolbar.visible = true
+
+app.viewport.grid.enabled = false
+#app.viewport.fillViewport = true # NOTE: (phadorn, 2026.02.03) This seems to be ignored, I'm setting it in the globe view rendersettings now
+# NOTE: have to use the legacy setting as else the movie capture can't set the resolution correctly
+app.renderer.resolution = [0,0]
+
+app.viewport.defaults.hud.renderFPS.visible = false
+app.viewport.defaults.hud.deviceMemory.visible = false
+app.viewport.defaults.hud.hostMemory.visible = false
+app.viewport.defaults.hud.renderProgress.visible = false
+app.viewport.defaults.hud.renderResolution.visible = false
+app.viewport.defaults.hud.cameraSpeed.visible = false
+app.viewport.defaults.hud.toastMessage.visible = false
+
+# Skip long full shutdown and exit quickly
+app.fastShutdown = true
+
+# render settings
+renderer.enabled = "rtx"
+rtx.rendermode = "RaytracedLighting"
+persistent.rtx.rendermode = "RaytracedLighting"
+persistent.rtx.modes.rt.enabled = true
+persistent.rtx.modes.rt2.enabled = true
+persistent.rtx.modes.pt.enabled = true
+persistent.renderer.raytracingOmm.enabled = false
+rtx.post.aa.op = 3 # DLSS
+rtx.post.dlss.execMode = 3 # auto dlss quality
+rtx-transient.resourcemanager.enableTextureStreaming = false
+
+# Turn off mGPU to avoid crash
+renderer.multiGpu.enabled = false
+
+[settings.persistent.app]
+# Mute Usd Coding Errors
+# This gets logged when removing prims even when the path is fully valid
+usd.muteUsdCodingError = true
+
+# Camera Manipulator Settings
+[settings.persistent.app]
+viewport.camVelocityMax = 20.0
+viewport.camInertiaEnabled = true # Enabled
+viewport.manipulator.camera.tumbleAcceleration = 200
+viewport.manipulator.camera.tumbleDampening = 20
+viewport.manipulator.camera.moveAcceleration = 200
+viewport.manipulator.camera.moveDampening = 20
+viewport.camVelocityScalerMultAmount = 1.35
+
+[settings.persistent.exts]
+"omni.kit.manipulator.camera".inertiaDecay = 3
+[settings.exts]
+# flight, tumble, look, move
+"omni.kit.manipulator.camera".inertiaModesEnabled = [0, 1, 0, 0]  # MOVE DISABLED UNTIL ZOOM CAN BE FIGURED OUT @gamato
+"omni.kit.window.viewport".showContextMenu = false
+
+# Fonts
+[settings.app.font]
+file = "${fonts}/OpenSans-SemiBold.ttf"
+size = 16
+
+# add extension and app searchpaths
+[settings.app.exts]
+folders.'++' = ["${app}/../exts", "${app}/../extscache/", "${app}/../apps"]
+
+# Set splash screen
+[settings.exts."omni.kit.window.splash"]
+imagePath = "${omni.earth_2_command_center.app.resources}/data/splash.png"
