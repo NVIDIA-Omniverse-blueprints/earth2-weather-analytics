@@ -1,0 +1,160 @@
+{
+  "sites": {
+    "server": {
+      "interface": {},
+      "providers": {},
+      "send_cost": {}
+    },
+    "client1": {
+      "interface": {
+        "dataloader.LoadCmip6Data": {
+          "operation": "dataloader.LoadCmip6Data",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "dataloader.LoadEcmwfEra5Data": {
+          "operation": "dataloader.LoadEcmwfEra5Data",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "dataloader.LoadGfsEra5Data": {
+          "operation": "dataloader.LoadGfsEra5Data",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "dataloader.LoadHrrrEra5Data": {
+          "operation": "dataloader.LoadHrrrEra5Data",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "xarray.ConvertToUint8": {
+          "operation": "xarray.ConvertToUint8",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "xarray.RenderUint8ToImages": {
+          "operation": "xarray.RenderUint8ToImages",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "xarray.VariableNorm": {
+          "operation": "xarray.VariableNorm",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "cbottle.CbottleDataGen": {
+          "operation": "cbottle.CbottleDataGen",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "cbottle.CbottleInfilling": {
+          "operation": "cbottle.CbottleInfilling",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "cbottle.CbottleSuperResolution": {
+          "operation": "cbottle.CbottleSuperResolution",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "cbottle.CBottleTropicalCycloneGuidance": {
+          "operation": "cbottle.CBottleTropicalCycloneGuidance",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "cbottle.CbottleVideo": {
+          "operation": "cbottle.CbottleVideo",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        },
+        "sfno.SfnoPrognostic": {
+          "operation": "sfno.SfnoPrognostic",
+          "compute_cost": {
+            "fixed_time": 1000000.0,
+            "compute_throughput": null,
+            "fixed_size": 10000000,
+            "output_factor": 0.0
+          },
+          "is_async": true
+        }
+      },
+      "providers": {},
+      "send_cost": {
+        "homesite": {
+          "fixed_time": 1.0,
+          "bandwidth": 1
+        }
+      }
+    },
+    "homesite": {
+      "interface": {},
+      "providers": {},
+      "send_cost": {
+        "client1": {
+          "fixed_time": 1.0,
+          "bandwidth": 1
+        }
+      }
+    }
+  }
+}

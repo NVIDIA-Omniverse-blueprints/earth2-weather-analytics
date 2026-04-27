@@ -1,0 +1,5 @@
+federations:
+  earth2:
+    config_path: configs/federation.dfm.yaml
+    federation_dir: .venv/lib/python3.12/site-packages/federation/
+    project_path: configs/project.yaml

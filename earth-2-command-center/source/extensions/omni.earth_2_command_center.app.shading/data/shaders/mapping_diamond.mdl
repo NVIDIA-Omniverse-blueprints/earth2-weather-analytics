@@ -1,0 +1,141 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+import ::anno::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+import ::debug::*;
+
+// local imports
+import common::*;
+import utils::*;
+import mapping::*;
+
+int2 get_diamond_texel_coords(
+       uniform int width,
+       uniform int height,
+    uniform int diamond_idx
+    [[
+      anno::unused()
+    ]],
+    uniform int diamond_subidx
+    [[
+      anno::unused()
+    ]]
+    )
+{
+  float3 geo_uvs = state::texture_coordinate(0);
+      uniform float pixel_width = 1.0/height;
+
+  int x_pos = 2*math::floor(geo_uvs[0]/pixel_width);
+  int y_pos = math::clamp(math::floor((1-geo_uvs[1])/pixel_width), 0, height-1);
+  float y = math::frac(geo_uvs[1]/pixel_width);
+  float x = math::frac(geo_uvs[0]/pixel_width);
+  return ((x<(1.0f-y)) ?
+          int2(math::clamp(x_pos+0, 0, width-1), y_pos) :
+          int2(math::clamp(x_pos+1, 0, width-1), y_pos));
+}
+
+export color lookup_diamond_texture(
+    uniform texture_2d diamond_0,
+    uniform texture_2d diamond_1,
+    uniform texture_2d diamond_2,
+    uniform texture_2d diamond_3,
+    uniform texture_2d diamond_4,
+    uniform texture_2d diamond_5,
+    uniform texture_2d diamond_6,
+    uniform texture_2d diamond_7,
+    uniform texture_2d diamond_8,
+    uniform texture_2d diamond_9)
+{
+  uniform int diamond_idx = math::clamp(scene::data_lookup_uniform_float("diamond_idx", 0), 0, 9);
+  uniform int diamond_subidx = scene::data_lookup_uniform_float("diamond_subidx", 0);
+
+  texture_2d[] textures = texture_2d[](
+      diamond_0,
+      diamond_1,
+      diamond_2,
+      diamond_3,
+      diamond_4,
+      diamond_5,
+      diamond_6,
+      diamond_7,
+      diamond_8,
+      diamond_9);
+
+  uniform int width = tex::width(diamond_0);
+  uniform int height = tex::height(diamond_0);
+  int2 texel_coords = get_diamond_texel_coords(width, height, diamond_idx, diamond_subidx);
+  //color lookup = tex::lookup_color(
+  //        textures[diamond_idx], uvs, tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+  color lookup = tex::texel_color(
+      textures[diamond_idx], texel_coords);
+  return lookup;
+}
+
+export float lookup_diamond_texture_mono(
+    uniform texture_2d diamond_0,
+    uniform texture_2d diamond_1,
+    uniform texture_2d diamond_2,
+    uniform texture_2d diamond_3,
+    uniform texture_2d diamond_4,
+    uniform texture_2d diamond_5,
+    uniform texture_2d diamond_6,
+    uniform texture_2d diamond_7,
+    uniform texture_2d diamond_8,
+    uniform texture_2d diamond_9)
+{
+  uniform int diamond_idx = scene::data_lookup_uniform_float("diamond_idx", 0);
+  uniform int diamond_subidx = scene::data_lookup_uniform_float("diamond_subidx", 0);
+
+  texture_2d[] textures = texture_2d[](
+      diamond_0,
+      diamond_1,
+      diamond_2,
+      diamond_3,
+      diamond_4,
+      diamond_5,
+      diamond_6,
+      diamond_7,
+      diamond_8,
+      diamond_9);
+
+  uniform int width = tex::width(diamond_0);
+  uniform int height = tex::height(diamond_0);
+  int2 texel_coords = get_diamond_texel_coords(width, height, diamond_idx, diamond_subidx);
+  float lookup = tex::texel_float(
+      textures[diamond_idx], texel_coords);
+  //float lookup = tex::lookup_float(
+  //        textures[diamond_idx], uvs, tex::wrap_mirrored_repeat, tex::wrap_mirrored_repeat);
+  return lookup;
+}
+

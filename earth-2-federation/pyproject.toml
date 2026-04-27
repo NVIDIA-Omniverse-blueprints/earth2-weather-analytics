@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "earth2-blueprint"
+version = "0.8.17"
+description = "Earth-2 Blueprint"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "nv_dfm_core>=3.1.0,<3.2.0",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/federation",
+]
+exclude = [
+    "ov/tools/packman",
+    "/federation/tests",
+    "/federation/workspace",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["federation"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv]
+no-build-isolation-package = ["flash-attn", "torch-harmonics"]
+
+[tool.uv.workspace]
+members = [ ]
+
+[tool.uv.extra-build-dependencies]
+earth2grid = ["setuptools", "torch"]
+
+[tool.ruff]
+# Exclude generated fed directory.
+exclude = ["federation/fed", "ov/tools/packman"]
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+log_level = "INFO"
+log_auto_indent = true
+
+[tool.interrogate]
+# Configuration for interrogate (docstring coverage tool)
+fail-under = 50
+exclude = [
+    "federation/fed",
+    "federation/tests",
+    "federation/workspace",
+    "ov/tools/packman",
+    "tests",
+    "helm",
+    ".venv"
+]
+ignore-init-module = true
+ignore-semiprivate = true
+ignore-private = true
+ignore-property-decorators = true
+ignore-magic = true
+
+[project.optional-dependencies]
+dev = [
+    "basedpyright>=1.31.5",
+    "interrogate>=1.7.0",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.9",
+]
+
+federation = [
+    "eccodeslib==2.44.0.1",
+    "nv_dfm_lib_common>=3.1.0,<3.2.0",
+    "nv_dfm_lib_weather>=3.1.0,<3.2.0",
+    "earth2studio[data]==0.10.0",
+]
+
+sfno = [
+    "earth2studio[sfno]==0.10.0",
+    "makani @ git+https://github.com/NVIDIA/makani.git@28f38e3e929ed1303476518552c64673bbd6f722",
+]

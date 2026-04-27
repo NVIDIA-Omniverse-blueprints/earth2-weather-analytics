@@ -1,0 +1,25 @@
+# API-only package: federation.api and federation.fed.api only.
+# Minimal deps (nv_dfm_core, nv_dfm_lib_weather) for integrating with the federation in POC mode.
+# Version is synced from root pyproject at build time.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "earth2-blueprint-api"
+version = "0.8.17"
+description = "Earth-2 Blueprint — API-only package for federation integration (no heavy runtime deps)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "nv_dfm_core>=3.1.0,<3.2.0",
+    "nv_dfm_lib_common>=3.1.0,<3.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+# Isolated build (temp copy in CI) has no parent workspace, so discovery finds federation/.
+packages = ["federation"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+

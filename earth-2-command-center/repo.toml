@@ -1,0 +1,218 @@
+########################################################################################################################
+# Repo tool base settings
+########################################################################################################################
+
+[repo]
+# Use Kit Template repo configuration as a base. Only override things specific to the repo.
+import_configs = [
+    "${root}/_repo/deps/repo_kit_tools/kit-template/repo.toml",
+    #"${root}/_repo/deps/repo_kit_tools/kit-template/repo-external-app.toml",
+]
+
+# Repository Name. It is used for solution name and final package name
+name = "earth-2-control-center"
+
+[repo_build]
+# If caching do not try to cache extensions. These will come from the NGC Kit Extension Registry.
+fetch."token:cache==true".after_pull_commands = []
+
+[repo_build.build]
+enabled = false
+
+[repo_build.msbuild]
+# If set to true will attempt to link to host's Visual Studio and Windows SDK installations.
+# This is needed if C++ compilation is needed on Windows, and repo_build.build.enabled is set to true.
+link_host_toolchain = false
+# AUTOREMOVE: BEGIN
+# Internally enable host linking in CI
+"token:in_ci==true".link_host_toolchain = true
+# AUTOREMOVE: END
+
+# Filter on Visual Studio version e.g.: Visual Studio 2022. Empty string will match all years and prioritize the newest.
+vs_version = "vs2022"
+# AUTOREMOVE: BEGIN
+"token:in_ci==true".vs_version = "vs2019"
+# AUTOREMOVE: END
+
+# Visual Studio path; This will be used if the user would like to point to a specific VS installation rather than rely on heuristic locating.
+# vs_path = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\"
+# AUTOREMOVE: BEGIN
+# Internal CI Visual Studio path that sometimes works.
+"token:in_ci==true".vs_path = "C:\\vs2019"
+# AUTOREMOVE: END
+
+# Disable linbuild until we have a public image available.
+[repo_build.docker]
+enabled = false
+
+[repo_build.fetch.pip]
+# List of pip files to pip install from (in order)
+files_to_pull = [
+    "${root}/deps/pip.toml"
+]
+
+# Do not gather Python dependency licenses
+licensing_enabled = false
+
+# Do not try to publish a pip cache to S3
+publish_pip_cache = false
+
+########################################################################################################################
+# Extensions precacher
+########################################################################################################################
+
+[repo_precache_exts]
+kit_path = "${root}/_build/${platform}/${config}/kit/kit${exe_ext}"
+
+registries = [
+    { name = "kit/default", url = "omniverse://kit-extensions.ov.nvidia.com/exts/kit/default" },
+    { name = "kit/sdk", url = "omniverse://kit-extensions.ov.nvidia.com/exts/kit/sdk/${kit_version_short}/${kit_git_hash}" },
+    #{ name = "kit/community", url = "https://dw290v42wisod.cloudfront.net/exts/kit/community" },
+]
+# Apps to run and precache
+apps = [
+    #"${root}/source/apps/package.kit",
+    "${root}/source/apps/omni.earth_2_command_center.app.kit",
+    "${root}/source/apps/omni.earth_2_command_center.app_dev.kit",
+    #"${root}/source/apps/omni.earth_2_command_center.app_ovc.kit",
+]
+
+# disable automatically generated exts.deps.generated.kit that includes all exts from the source tree
+generated_app_path = ""
+
+########################################################################################################################
+# Test Runner
+########################################################################################################################
+
+[repo_test.suites.alltests]
+kind = "glob_and_exec"
+path = "${test_root}"
+
+# Run all test
+include = [
+    "tests-*${shell_ext}"
+]
+exclude = [
+    "tests-omni.earth_2_command_center.app${shell_ext}",
+    "tests-omni.earth_2_command_center.app_dev${shell_ext}",
+    "tests-omni.earth_2_command_center.app_ovc${shell_ext}",
+]
+
+stdout_fail_patterns.exclude = [
+    "*NVML_ERROR_NOT_SUPPORTED*",
+    ]
+
+args = [
+    # disable pcielink check to avoid NVML_ERROR_NOT_SUPPORTED errors when running
+    # tests on vGPU runners
+    "--/validate/pcielink/enabled=false",
+]
+
+########################################################################################################################
+# Licensing
+########################################################################################################################
+[repo_build.licensing]
+enabled = false
+run_by_default = false
+include_kit_extensions = false
+write_dedupe_manifests = true
+
+# Do not gather Python dependency licenses
+licensing_enabled = false
+
+########################################################################################################################
+# Tool to pull kit kernel and extensions before running
+########################################################################################################################
+# override environment to always use public registry.
+[[repo_kit_pull_extensions.environment]]
+name = "integ"
+app_version_regex = ""
+tokens.registry_url = "https://ovextensionsprod.blob.core.windows.net"
+tokens.registry_shared_name = "shared"
+tokens.registry_name = "kit/prod"
+
+########################################################################################################################
+# Documentation building
+########################################################################################################################
+
+[repo_docs]
+# disable until the environment variable is longer than 32767 characters is fixed
+enabled = false
+
+# earth-2-control-center doc
+[[repo_docs.kit.custom_project]]
+name = "earth-2-command-center"
+root = "${root}"
+config_path = "${root}/docs/docs.toml"
+
+# extension docs
+# TODO
+[repo_docs.kit]
+extensions = [
+#    "example.cpp_ext",
+#    "example.mixed_ext",
+#    "example.python_ext",
+]
+
+########################################################################################################################
+# Packaging
+########################################################################################################################
+
+[repo_package]
+[repo_package.packages.main_package]
+exclude_kit_extensions_for_thin_packaging = false
+# with dfm, it pulls in flare in pip_prebundle leading to long paths
+windows_max_path_length = 0
+
+files_strip_exclude  = [
+    ["extscache/omni.vdb.neuralvdb*/bin/**"],
+    ["extscache/omni.kit.pip_archive*/pip_prebundle/**"],
+    ["extscache/omni.services.pip_archive*/pip_prebundle/**"],
+]
+
+########################################################################################################################
+# CI Entry points (scripts)
+########################################################################################################################
+
+# Override the default build script to only build release config
+[repo_ci.jobs.build]
+script = "${root}/tools/ci/build.py"
+
+########################################################################################################################
+# Extensions publisher
+########################################################################################################################
+
+[repo_publish_exts]
+enabled = false
+
+# Extensions to publish, include and exclude among those discovered by kit. Wildcards are supported.
+exts.include = [
+#    "hpcvis.dynamictexture",
+#    "omni.earth_2_command_center.app.*",
+]
+exts.exclude = []
+
+# verify before publishing
+publish_verification = false
+
+# Supported configs and platforms when `-a` cmd is used
+configs = ["release"]  # removed debug
+
+
+########################################################################################################################
+# Tool to promote extensions to the public registry pipeline
+########################################################################################################################
+
+[repo_deploy_exts]
+enabled = false
+
+########################################################################################################################
+# Launcher publish and deploy
+########################################################################################################################
+
+[repo_deploy_launcher]
+enabled = false
+# TODO
+git_url = "https://oauth2:${env:GITLAB_AUTH_TOKEN}@gitlab-master.nvidia.com/omniverse/release-pipelines/my_app-release-pipeline.git"
+slack.enabled = false
+slack.slack_url = "" # "/services/T04SYRAP3/B030FFD56F6/0ULRbblFrqUwJiRiMuUUjAgE" # omni-code

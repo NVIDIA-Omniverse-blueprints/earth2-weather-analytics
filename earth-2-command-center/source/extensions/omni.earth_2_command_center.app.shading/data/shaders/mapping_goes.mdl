@@ -1,0 +1,241 @@
+/***************************************************************************************************
+ * Copyright 2025 NVIDIA Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************************************/
+
+mdl 1.9;
+
+import ::anno::*;
+import ::math::*;
+import ::scene::*;
+import ::state::*;
+import ::tex::*;
+import ::debug::*;
+
+// local imports
+import common::*;
+import utils::*;
+import mapping::*;
+
+// GOES Transformation
+// https://www.goes-r.gov/products/docs/PUG-L2+-vol5.pdf
+// section 4.2.8.2
+// x = goes.x, y = goes.y, z = visible
+float3 latlong_to_goes(float2 latlon,
+        uniform float lambda0,
+        uniform float perspective_point_height) {
+    // constants
+    const float r_eq = 6378137.0f;
+    const float r_pol = 6356752.31414f;
+    float H = r_eq + perspective_point_height;
+    const float r2_ratio = (r_eq*r_eq)/(r_pol*r_pol);
+    const float e = math::sqrt((r_eq*r_eq - r_pol*r_pol)/(r_eq*r_eq));
+
+    float phi_c = math::atan(math::tan(latlon.x)/r2_ratio);
+    float[2] sincos_phi_c = math::sincos(phi_c);
+    float r_c = r_pol * math::rsqrt(1.0f - e*e*sincos_phi_c[1]*sincos_phi_c[1]);
+
+    float3 s = float3(
+            H - r_c*sincos_phi_c[1]*math::cos(latlon.y-lambda0),
+            -r_c*sincos_phi_c[1]*math::sin(latlon.y-lambda0),
+            r_c*sincos_phi_c[0]);
+
+    bool visible = H*(H-s.x) >= s.y*s.y + r2_ratio*s.z*s.z;
+
+    if (!visible) {
+        return float3(0,0,0);
+    } else {
+        float2 goes_coords = float2(
+                math::asin(-math::normalize(s).y),
+                math::atan(s.z/s.x));
+        return float3(goes_coords.x, goes_coords.y, 1.0f);
+    }
+}
+
+float3 get_geos_uvs(
+        float3 P,
+        uniform float longitudinal_offset,
+        uniform float perspective_point_height = 35786023.0f) {
+    float earth_radius = math::length(P);
+    const float true_earth_radius_eq = 6378137.0f; // [m]
+    //const float true_earth_radius_pol = 6356752.31414f; // [m]
+    float adjusted_height = perspective_point_height/true_earth_radius_eq*earth_radius;
+
+    float2 latlong = mapping::get_latlong_coords();
+    float[2] sincos_lat = math::sincos(latlong.x);
+    float[2] sincos_lon = math::sincos(latlong.y-longitudinal_offset);
+
+    //const float r_ratio = true_earth_radius_pol/true_earth_radius_eq;
+    //const float e2 = 1-r_ratio*r_ratio;
+    // we don't use geodesic latitudes for the main mapping so we can't use it here
+    float r_c = earth_radius;//*math::rsqrt(1.0f - e2*sincos_lat[1]*sincos_lat[1]);
+
+    float3 s = float3(
+            (adjusted_height+earth_radius) - r_c*sincos_lat[1]*sincos_lon[1],
+            -r_c*sincos_lat[1]*sincos_lon[0],
+            r_c*sincos_lat[0]);
+
+    float x = math::asin(-s.y/math::length(s))/0.151844f;
+    float y = math::atan(s.z/s.x)/0.151844f;
+
+    //float3 No = math::normalize(P);
+    return float3(0.5f*(x+1), 0.5f*(y+1), sincos_lat[1]*sincos_lon[1]);
+
+    //float earth_radius = math::length(P);
+    //const float true_earth_radius_eq = 6378137.0f; // [m]
+    //const float true_earth_radius_pol = 6356752.31414f; // [m]
+    //float adjusted_height = perspective_point_height/true_earth_radius_eq*earth_radius;
+
+    //const float r_ratio = true_earth_radius_pol/true_earth_radius_eq;
+    //const float e2 = 1-r_ratio*r_ratio;
+    //float theta = math::asin(P.z/earth_radius);
+    ////float stretch = math::sqrt(
+    ////        math::cos(theta)*math::cos(theta) +
+    ////        r_ratio*r_ratio*math::sin(theta)*math::sin(theta));
+    //float r_c = math::rsqrt(1.0f - e2*math::cos(theta)*math::cos(theta));
+    //P *= r_c;
+
+    //// optimize away the matrix multiplications
+    //uniform float[2] sincos_theta = math::sincos(longitudinal_offset);
+    //float3x3 rot_mat = float3x3(
+    //        sincos_theta[1], -sincos_theta[0], 0,
+    //        sincos_theta[0],  sincos_theta[1], 0,
+    //        0, 0, 1);
+    //float3 rot_pos = rot_mat*P;
+
+    //float3 sat_x = rot_mat*float3(-1,0,0);
+    //float3 sat_z = float3(0,0,1);
+    //float3 sat_y = rot_mat*float3(0,-1,0);
+
+    //float3 s = (sat_x*P.x+sat_y*P.y+sat_z*P.z);
+    //s.x += earth_radius+adjusted_height;
+    //float x = math::asin(-s.y/math::length(s))/0.151844f;
+    //float y = math::atan(s.z/s.x)/0.151844f;
+
+    //float3 No = math::normalize(P);
+    //return float3(0.5f*(x+1), 0.5f*(y+1), (rot_mat*No).x);
+}
+
+
+// ========================================
+// GOES Textures
+// ========================================
+export color lookup_goes_texture(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform float perspective_point_height = 35786023.0f,
+    uniform float2 x_range = float2(-0.101332f, 0.038612f),
+    uniform float2 y_range = float2(0.044268f, 0.128212f),
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool black_outside = true)
+{
+  float2 latlong = mapping::get_latlong_coords();
+  float3 goes = latlong_to_goes(latlong,
+          longitudinal_offset, perspective_point_height);
+
+  float2 lookup_uv = mapping::apply_flip(float2(
+          (goes.x-x_range.x)/(x_range.y-x_range.x),
+          (goes.y-y_range.x)/(y_range.y-y_range.x)),
+          flip_u, flip_v);
+  bool mask =
+      (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_color(texture, lookup_uv,
+        tex::wrap_clip, tex::wrap_clip)*mask;
+  else
+    return color(mask);
+}
+
+export float lookup_goes_texture_mono(
+    uniform texture_2d texture,
+    uniform float longitudinal_offset = 0.0f,
+    uniform float perspective_point_height = 35786023.0f,
+    uniform float2 x_range = float2(-0.101332f, 0.038612f),
+    uniform float2 y_range = float2(0.044268f, 0.128212f),
+    uniform bool flip_u=false, uniform bool flip_v=false,
+    uniform bool black_outside = true)
+{
+  float2 latlong = mapping::get_latlong_coords();
+  float3 goes = latlong_to_goes(latlong,
+          longitudinal_offset, perspective_point_height);
+
+  float2 lookup_uv = mapping::apply_flip(float2(
+          (goes.x-x_range.x)/(x_range.y-x_range.x),
+          (goes.y-y_range.x)/(y_range.y-y_range.x)),
+          flip_u, flip_v);
+  bool mask =
+      (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+  if (tex::texture_isvalid(texture))
+    return tex::lookup_float(texture, lookup_uv,
+        tex::wrap_clip, tex::wrap_clip)*mask;
+  else
+    return float(mask);
+}
+
+export color lookup_goes_disk_texture(
+        uniform texture_2d texture,
+        uniform float longitudinal_offset = 0.0f,
+        uniform float perspective_point_height = 35786023.0f,
+        uniform bool flip_u=false, uniform bool flip_v=false,
+        uniform bool black_outside = true)
+{
+    float3 Po = state::transform_point(state::coordinate_internal, state::coordinate_world, state::position());
+    float3 uvs = get_geos_uvs(Po, longitudinal_offset, perspective_point_height);
+
+    float mask = math::clamp((uvs.z-0.3f)/(0.5f-0.3f), 0.0f, 1.0f);
+    float2 lookup_uv = mapping::apply_flip(float2(uvs.x, uvs.y), flip_u, flip_v);
+    mask *= (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+    if (tex::texture_isvalid(texture))
+        return tex::lookup_color(texture, lookup_uv,
+                tex::wrap_clip, tex::wrap_clip)*mask;
+    else
+        return color(mask);
+}
+
+export float lookup_goes_disk_texture_mono(
+        uniform texture_2d texture,
+        uniform float longitudinal_offset = 0.0f,
+        uniform float perspective_point_height = 35786023.0f,
+        uniform bool flip_u=false, uniform bool flip_v=false,
+        uniform bool black_outside = true)
+{
+    float3 Po = state::transform_point(state::coordinate_internal, state::coordinate_world, state::position());
+    float3 uvs = get_geos_uvs(Po, longitudinal_offset, perspective_point_height);
+
+    float mask = math::clamp((uvs.z-0.3f)/(0.5f-0.3f), 0.0f, 1.0f);
+    float2 lookup_uv = mapping::apply_flip(float2(uvs.x, uvs.y), flip_u, flip_v);
+    mask *= (black_outside) ? !mapping::is_outside(lookup_uv) : true;
+
+    if (tex::texture_isvalid(texture))
+        return tex::lookup_float(texture, lookup_uv,
+                tex::wrap_clip, tex::wrap_clip)*mask;
+    else
+        return mask;
+}
+

@@ -1,0 +1,61 @@
+[package]
+# Semantic Versionning is used: https://semver.org/
+version = "0.1.0"
+
+# The title and description fields are primarily for displaying extension info in UI
+title = "Earth2 Blueprint Extension"
+description = "Integrates the Earth2 AI Models to E2CC through the DFM"
+
+# Path (relative to the root) or content of readme markdown file for UI.
+readme  = "docs/README.md"
+
+# Path (relative to the root) or content of changelog markdown file for UI.
+changelog = "docs/CHANGELOG.md"
+
+# URL of the extension source repository.
+repository = "https://github.com/NVIDIA-Omniverse-blueprints/earth2-weather-analytics"
+
+# One of categories for UI.
+category = "example"
+
+# Keywords for the extension
+keywords = ["kit", "example"]
+
+# Icon to show in the extension manager
+icon = "data/icon.png"
+
+# Preview to show in the extension manager
+preview_image = "data/preview.png"
+
+[dependencies]
+"omni.earth_2_command_center.app.dfm" = {}
+"omni.earth_2_command_center.app.globe_view" = {}
+"omni.earth_2_command_center.app.window.feature_properties" = {}
+"omni.kit.async_engine" = {}
+
+# Main python module this extension provides
+[[python.module]]
+name = "earth2_blueprint"
+
+[settings]
+# Data Federation Engine configuration
+exts."earth2_blueprint".flare_workspace = "./workspace/earth2_poc/"
+exts."earth2_blueprint".job_workspace = "/tmp/job_workspace"
+exts."earth2_blueprint".admin_package = "./workspace/earth2_poc/federation/prod_00/homesite@earth2.nvidia.com"
+exts."earth2_blueprint".user = "homesite@earth2.nvidia.com"
+
+[[test]]
+args = [
+    # disable pcielink check to avoid NVML_ERROR_NOT_SUPPORTED errors when running
+    # tests on vGPU runners
+    "--/validate/pcielink/enabled=false",
+]
+
+[[test]]
+name = "startup"
+args = [
+    # disable pcielink check to avoid NVML_ERROR_NOT_SUPPORTED errors when running
+    # tests on vGPU runners
+    "--/validate/pcielink/enabled=false",
+]
+

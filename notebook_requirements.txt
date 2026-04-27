@@ -1,0 +1,7 @@
+pillow
+matplotlib
+notebook
+ipykernel
+nv_dfm_core>=3.1.0,<3.2.0
+nv_dfm_lib_common>=3.1.0,<3.2.0
+./earth-2-federation/dist/earth2_blueprint_api-0.8.17-py3-none-any.whl
